@@ -1,5 +1,6 @@
 package com.neo.neomovies.ui.home
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,71 +33,97 @@ import com.neo.neomovies.ui.navigation.CategoryType
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Search
 
 @Composable
 fun HomeScreen(
     onOpenCategory: (CategoryType) -> Unit,
     onOpenDetails: (String) -> Unit,
+    onOpenSearch: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
 
-    when {
-        state.isLoading -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    val mode = when {
+        state.isLoading -> HomeMode.Loading
+        state.error != null -> HomeMode.Error
+        else -> HomeMode.Content
+    }
+
+    Crossfade(targetState = mode, label = "home_mode") { m ->
+        when (m) {
+            HomeMode.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
-        }
 
-        state.error != null -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = state.error ?: "Ошибка")
+            HomeMode.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = state.error ?: "Ошибка")
+                }
             }
-        }
 
-        else -> {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                item {
-                    Text(
-                        text = "NeoMovies",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
+            HomeMode.Content -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "NeoMovies",
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = onOpenSearch) {
+                                Icon(imageVector = Icons.Filled.Search, contentDescription = "Search")
+                            }
+                        }
+                    }
 
-                item {
-                    HomeSection(
-                        title = "Популярное",
-                        items = state.popular,
-                        onMore = { onOpenCategory(CategoryType.POPULAR) },
-                        onOpenDetails = onOpenDetails,
-                    )
-                }
+                    item {
+                        HomeSection(
+                            title = "Популярное",
+                            items = state.popular,
+                            onMore = { onOpenCategory(CategoryType.POPULAR) },
+                            onOpenDetails = onOpenDetails,
+                        )
+                    }
 
-                item {
-                    HomeSection(
-                        title = "Топ фильмов",
-                        items = state.topMovies,
-                        onMore = { onOpenCategory(CategoryType.TOP_MOVIES) },
-                        onOpenDetails = onOpenDetails,
-                    )
-                }
+                    item {
+                        HomeSection(
+                            title = "Топ фильмов",
+                            items = state.topMovies,
+                            onMore = { onOpenCategory(CategoryType.TOP_MOVIES) },
+                            onOpenDetails = onOpenDetails,
+                        )
+                    }
 
-                item {
-                    HomeSection(
-                        title = "Топ сериалов",
-                        items = state.topTv,
-                        onMore = { onOpenCategory(CategoryType.TOP_TV) },
-                        onOpenDetails = onOpenDetails,
-                    )
+                    item {
+                        HomeSection(
+                            title = "Топ сериалов",
+                            items = state.topTv,
+                            onMore = { onOpenCategory(CategoryType.TOP_TV) },
+                            onOpenDetails = onOpenDetails,
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+private enum class HomeMode {
+    Loading,
+    Error,
+    Content,
 }
 
 @Composable

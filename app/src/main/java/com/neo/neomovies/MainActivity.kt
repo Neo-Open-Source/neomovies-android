@@ -32,6 +32,7 @@ import com.neo.neomovies.ui.list.CategoryListScreen
 import com.neo.neomovies.ui.navigation.CategoryType
 import com.neo.neomovies.ui.navigation.NavRoute
 import com.neo.neomovies.ui.profile.ProfileScreen
+import com.neo.neomovies.ui.search.SearchScreen
 import com.neo.neomovies.ui.theme.NeoMoviesTheme
 
 class MainActivity : ComponentActivity() {
@@ -95,6 +96,18 @@ fun NeoMoviesApp() {
                         onOpenCategory = { type ->
                             navController.navigate(NavRoute.CategoryList.create(type))
                         },
+                        onOpenDetails = { sourceId ->
+                            navController.navigate(NavRoute.Details.create(sourceId))
+                        },
+                        onOpenSearch = {
+                            navController.navigate(NavRoute.Search.route)
+                        },
+                    )
+                }
+
+                composable(NavRoute.Search.route) {
+                    SearchScreen(
+                        onBack = { navController.popBackStack() },
                         onOpenDetails = { sourceId ->
                             navController.navigate(NavRoute.Details.create(sourceId))
                         },

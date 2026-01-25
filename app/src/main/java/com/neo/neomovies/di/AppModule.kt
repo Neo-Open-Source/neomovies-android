@@ -8,6 +8,7 @@ import com.neo.neomovies.data.network.createRetrofit
 import com.neo.neomovies.ui.home.HomeViewModel
 import com.neo.neomovies.ui.list.CategoryListViewModel
 import com.neo.neomovies.ui.details.DetailsViewModel
+import com.neo.neomovies.ui.search.SearchViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -26,4 +27,6 @@ val appModule = module {
     viewModel { (sourceId: String) ->
         DetailsViewModel(repository = get(), sourceId = sourceId)
     }
+
+    viewModel { SearchViewModel(repository = get()) }
 }

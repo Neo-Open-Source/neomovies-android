@@ -1,5 +1,6 @@
 package com.neo.neomovies.ui.details
-
+ 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,7 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -34,6 +38,9 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +50,13 @@ fun DetailsScreen(
 ) {
     val viewModel: DetailsViewModel = koinViewModel(parameters = { parametersOf(sourceId) })
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
+
+    val mode = when {
+        state.isLoading -> DetailsMode.Loading
+        state.error != null -> DetailsMode.Error
+        state.details != null -> DetailsMode.Content
+        else -> DetailsMode.Loading
+    }
 
     Scaffold(
         topBar = {
@@ -65,55 +79,78 @@ fun DetailsScreen(
             )
         },
     ) { padding ->
-        when {
-            state.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+        Crossfade(targetState = mode, label = "details_mode") { m ->
+            when (m) {
+                DetailsMode.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
 
-            state.error != null -> {
-                val error = state.error ?: "Ошибка"
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(text = error)
+                DetailsMode.Error -> {
+                    val error = state.error ?: "Ошибка"
+                    Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                        Text(text = error)
+                    }
                 }
-            }
 
-            state.details != null -> {
-                val details = state.details!!
-                val posterId =
-                    details.externalIds?.kp?.toString()
-                        ?: details.id
-                        ?: details.sourceId
-                val posterModel = normalizeImageUrl(posterId)
+                DetailsMode.Content -> {
+                    val details = state.details!!
+                    val posterId =
+                        details.externalIds?.kp?.toString()
+                            ?: details.id
+                            ?: details.sourceId
+                    val posterModel = normalizeImageUrl(posterId)
 
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                ) {
-                    val isTablet = this.maxWidth >= 600.dp
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                    ) {
+                        val isTablet = this.maxWidth >= 600.dp
 
-                    if (isTablet) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            Poster(posterModel = posterModel, modifier = Modifier.width(260.dp))
-                            DetailsBody(details = details, modifier = Modifier.weight(1f))
-                        }
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            Poster(posterModel = posterModel, modifier = Modifier.fillMaxWidth())
-                            DetailsBody(details = details, modifier = Modifier.fillMaxWidth())
+                        if (isTablet) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    Poster(
+                                        posterModel = posterModel,
+                                        isTablet = true,
+                                        modifier = Modifier.width(260.dp),
+                                    )
+                                    DetailsBody(details = details, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                Poster(
+                                    posterModel = posterModel,
+                                    isTablet = false,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                DetailsBody(
+                                    details = details,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -122,19 +159,51 @@ fun DetailsScreen(
     }
 }
 
+private enum class DetailsMode {
+    Loading,
+    Error,
+    Content,
+}
+
 @Composable
 private fun Poster(
     posterModel: Any?,
+    isTablet: Boolean,
     modifier: Modifier,
 ) {
-    AsyncImage(
-        model = posterModel,
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
+    val posterHeight = if (isTablet) 380.dp else 360.dp
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(360.dp),
-    )
+            .height(posterHeight)
+            .clip(if (isTablet) RoundedCornerShape(20.dp) else RoundedCornerShape(0.dp)),
+    ) {
+        AsyncImage(
+            model = posterModel,
+            contentDescription = null,
+            contentScale = if (isTablet) ContentScale.Fit else ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        if (!isTablet) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                MaterialTheme.colorScheme.surface,
+                            ),
+                        ),
+                    ),
+            )
+        }
+    }
 }
 
 @Composable

@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.neo.neomovies.ui.details.DetailsScreen
 import com.neo.neomovies.ui.home.HomeScreen
 import com.neo.neomovies.ui.list.CategoryListScreen
+import com.neo.neomovies.ui.search.SearchScreen
 
 @Composable
 fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
@@ -23,6 +24,14 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
         composable(NavRoute.Home.route) {
             HomeScreen(
                 onOpenCategory = { type -> navController.navigate(NavRoute.CategoryList.create(type)) },
+                onOpenDetails = { sourceId -> navController.navigate(NavRoute.Details.create(sourceId)) },
+                onOpenSearch = { navController.navigate(NavRoute.Search.route) },
+            )
+        }
+
+        composable(NavRoute.Search.route) {
+            SearchScreen(
+                onBack = { navController.popBackStack() },
                 onOpenDetails = { sourceId -> navController.navigate(NavRoute.Details.create(sourceId)) },
             )
         }

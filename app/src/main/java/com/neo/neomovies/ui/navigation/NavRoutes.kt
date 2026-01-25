@@ -7,6 +7,7 @@ sealed class NavRoute(val route: String) {
     data object Home : NavRoute("home")
     data object Favorites : NavRoute("favorites")
     data object Profile : NavRoute("profile")
+    data object Search : NavRoute("search")
     data object Details : NavRoute("details/{sourceId}") {
         fun create(sourceId: String) = "details/$sourceId"
     }

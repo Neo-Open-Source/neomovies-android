@@ -12,7 +12,10 @@ import kotlinx.coroutines.launch
 
 data class CategoryListUiState(
     val isLoading: Boolean = false,
+    val isAppendLoading: Boolean = false,
     val error: String? = null,
+    val page: Int = 1,
+    val totalPages: Int = 1,
     val items: List<MediaDto> = emptyList(),
 )
 
@@ -28,17 +31,52 @@ class CategoryListViewModel(
     }
 
     fun load() {
-        _state.update { it.copy(isLoading = true, error = null) }
+        _state.update { it.copy(isLoading = true, isAppendLoading = false, error = null, page = 1) }
         viewModelScope.launch {
             try {
-                val items = when (category) {
-                    CategoryType.POPULAR -> repository.getPopular(1)
-                    CategoryType.TOP_MOVIES -> repository.getTopMovies(1)
-                    CategoryType.TOP_TV -> repository.getTopTv(1)
+                val data = when (category) {
+                    CategoryType.POPULAR -> repository.getPopularPage(1)
+                    CategoryType.TOP_MOVIES -> repository.getTopMoviesPage(1)
+                    CategoryType.TOP_TV -> repository.getTopTvPage(1)
                 }
-                _state.update { it.copy(isLoading = false, error = null, items = items) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        isAppendLoading = false,
+                        error = null,
+                        page = 1,
+                        totalPages = (data.totalPages ?: 1).coerceAtLeast(1),
+                        items = data.results,
+                    )
+                }
             } catch (t: Throwable) {
                 _state.update { it.copy(isLoading = false, error = t.message ?: "Ошибка загрузки") }
+            }
+        }
+    }
+
+    fun loadNextPage() {
+        val s = state.value
+        if (s.isLoading || s.isAppendLoading || s.page >= s.totalPages) return
+        val nextPage = s.page + 1
+        _state.update { it.copy(isAppendLoading = true, error = null, page = nextPage) }
+        viewModelScope.launch {
+            try {
+                val data = when (category) {
+                    CategoryType.POPULAR -> repository.getPopularPage(nextPage)
+                    CategoryType.TOP_MOVIES -> repository.getTopMoviesPage(nextPage)
+                    CategoryType.TOP_TV -> repository.getTopTvPage(nextPage)
+                }
+                _state.update {
+                    it.copy(
+                        isAppendLoading = false,
+                        error = null,
+                        totalPages = (data.totalPages ?: it.totalPages).coerceAtLeast(1),
+                        items = it.items + data.results,
+                    )
+                }
+            } catch (t: Throwable) {
+                _state.update { it.copy(isAppendLoading = false) }
             }
         }
     }

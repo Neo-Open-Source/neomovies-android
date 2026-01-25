@@ -15,7 +15,7 @@ fun createOkHttpClient(): OkHttpClient {
         Log.d("OkHttp", message)
     }.apply {
         level = if (BuildConfig.DEBUG) {
-            HttpLoggingInterceptor.Level.HEADERS
+            HttpLoggingInterceptor.Level.BODY
         } else {
             HttpLoggingInterceptor.Level.BASIC
         }

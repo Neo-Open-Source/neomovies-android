@@ -31,4 +31,18 @@ interface MoviesApi {
         @Path("id") id: String,
         @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaDetailsDto>
+
+    @GET("api/v1/movies/search")
+    suspend fun searchMovies(
+        @Query("query") query: String,
+        @Query("page") page: Int = 1,
+        @Query("lang") lang: String = "ru",
+    ): ApiEnvelopeDto<MediaResponseDto>
+
+    @GET("api/v1/tv/search")
+    suspend fun searchTv(
+        @Query("query") query: String,
+        @Query("page") page: Int = 1,
+        @Query("lang") lang: String = "ru",
+    ): ApiEnvelopeDto<MediaResponseDto>
 }
