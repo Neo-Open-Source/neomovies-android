@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.neo.neomovies.data.network.dto.MediaDto
+import com.neo.neomovies.ui.util.normalizeImageUrl
 
 @Composable
 fun MediaPosterCard(
@@ -28,7 +29,11 @@ fun MediaPosterCard(
     onClick: (() -> Unit)? = null,
 ) {
     val title = item.title ?: item.nameRu ?: item.name ?: item.nameOriginal ?: ""
-    val poster = item.posterUrlPreview ?: item.posterPath
+    val rawId = when (val v = item.id) {
+        is Number -> v.toLong().toString()
+        else -> v?.toString()
+    }
+    val poster = normalizeImageUrl(item.kinopoiskId?.toString() ?: rawId)
 
     Column(
         modifier = modifier.let { m -> if (onClick != null) m.clickable { onClick() } else m },

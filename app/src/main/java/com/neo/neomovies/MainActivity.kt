@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.neo.neomovies.ui.favorites.FavoritesScreen
+import com.neo.neomovies.ui.details.DetailsScreen
 import com.neo.neomovies.ui.home.HomeScreen
 import com.neo.neomovies.ui.list.CategoryListScreen
 import com.neo.neomovies.ui.navigation.CategoryType
@@ -94,6 +95,9 @@ fun NeoMoviesApp() {
                         onOpenCategory = { type ->
                             navController.navigate(NavRoute.CategoryList.create(type))
                         },
+                        onOpenDetails = { sourceId ->
+                            navController.navigate(NavRoute.Details.create(sourceId))
+                        },
                     )
                 }
 
@@ -109,6 +113,17 @@ fun NeoMoviesApp() {
                     val type = CategoryType.from(entry.arguments?.getString("type"))
                     CategoryListScreen(
                         categoryType = type,
+                        onBack = { navController.popBackStack() },
+                        onOpenDetails = { sourceId ->
+                            navController.navigate(NavRoute.Details.create(sourceId))
+                        },
+                    )
+                }
+
+                composable(NavRoute.Details.route) { entry ->
+                    val sourceId = entry.arguments?.getString("sourceId") ?: return@composable
+                    DetailsScreen(
+                        sourceId = sourceId,
                         onBack = { navController.popBackStack() },
                     )
                 }

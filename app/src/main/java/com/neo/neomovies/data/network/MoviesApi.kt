@@ -1,8 +1,10 @@
 package com.neo.neomovies.data.network
 
 import com.neo.neomovies.data.network.dto.ApiEnvelopeDto
+import com.neo.neomovies.data.network.dto.MediaDetailsDto
 import com.neo.neomovies.data.network.dto.MediaResponseDto
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface MoviesApi {
@@ -23,4 +25,10 @@ interface MoviesApi {
         @Query("page") page: Int = 1,
         @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaResponseDto>
+
+    @GET("api/v1/movie/{id}")
+    suspend fun getDetails(
+        @Path("id") id: String,
+        @Query("lang") lang: String = "ru",
+    ): ApiEnvelopeDto<MediaDetailsDto>
 }

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 @Composable
 fun HomeScreen(
     onOpenCategory: (CategoryType) -> Unit,
+    onOpenDetails: (String) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
@@ -72,6 +73,7 @@ fun HomeScreen(
                         title = "Популярное",
                         items = state.popular,
                         onMore = { onOpenCategory(CategoryType.POPULAR) },
+                        onOpenDetails = onOpenDetails,
                     )
                 }
 
@@ -80,6 +82,7 @@ fun HomeScreen(
                         title = "Топ фильмов",
                         items = state.topMovies,
                         onMore = { onOpenCategory(CategoryType.TOP_MOVIES) },
+                        onOpenDetails = onOpenDetails,
                     )
                 }
 
@@ -88,6 +91,7 @@ fun HomeScreen(
                         title = "Топ сериалов",
                         items = state.topTv,
                         onMore = { onOpenCategory(CategoryType.TOP_TV) },
+                        onOpenDetails = onOpenDetails,
                     )
                 }
             }
@@ -100,6 +104,7 @@ private fun HomeSection(
     title: String,
     items: List<com.neo.neomovies.data.network.dto.MediaDto>,
     onMore: () -> Unit,
+    onOpenDetails: (String) -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val cardWidth: Dp = when {
@@ -135,9 +140,15 @@ private fun HomeSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(items.take(12)) { item ->
+                    val rawId = when (val v = item.id) {
+                        is Number -> v.toLong().toString()
+                        else -> v?.toString()
+                    }
+                    val sourceId = rawId?.let { if (it.contains("_")) it else "kp_$it" }
                     MediaPosterCard(
                         item = item,
                         modifier = Modifier.width(cardWidth),
+                        onClick = { if (sourceId != null) onOpenDetails(sourceId) },
                     )
                 }
             }

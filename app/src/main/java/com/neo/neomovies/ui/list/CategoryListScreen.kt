@@ -28,13 +28,14 @@ import com.neo.neomovies.ui.navigation.CategoryType
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryListScreen(
     categoryType: CategoryType,
     onBack: () -> Unit,
+    onOpenDetails: (String) -> Unit,
 ) {
     val viewModel: CategoryListViewModel = koinViewModel(parameters = { parametersOf(categoryType) })
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
@@ -46,7 +47,7 @@ fun CategoryListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                         )
                     }
@@ -78,10 +79,16 @@ fun CategoryListScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     items(state.items) { item ->
+                        val rawId = when (val v = item.id) {
+                            is Number -> v.toLong().toString()
+                            else -> v?.toString()
+                        }
+                        val sourceId = rawId?.let { if (it.contains("_")) it else "kp_$it" }
                         MediaPosterCard(
                             item = item,
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxWidth(),
+                            onClick = { if (sourceId != null) onOpenDetails(sourceId) },
                         )
                     }
                 }
