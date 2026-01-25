@@ -22,7 +22,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.neo.neomovies.ui.favorites.FavoritesScreen
@@ -34,6 +33,7 @@ import com.neo.neomovies.ui.navigation.NavRoute
 import com.neo.neomovies.ui.profile.ProfileScreen
 import com.neo.neomovies.ui.search.SearchScreen
 import com.neo.neomovies.ui.theme.NeoMoviesTheme
+import com.neo.neomovies.ui.motion.animatedComposable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +91,7 @@ fun NeoMoviesApp() {
                 startDestination = NavRoute.Home.route,
                 modifier = Modifier.padding(innerPadding),
             ) {
-                composable(NavRoute.Home.route) {
+                animatedComposable(NavRoute.Home.route) {
                     HomeScreen(
                         onOpenCategory = { type ->
                             navController.navigate(NavRoute.CategoryList.create(type))
@@ -105,7 +105,7 @@ fun NeoMoviesApp() {
                     )
                 }
 
-                composable(NavRoute.Search.route) {
+                animatedComposable(NavRoute.Search.route) {
                     SearchScreen(
                         onBack = { navController.popBackStack() },
                         onOpenDetails = { sourceId ->
@@ -114,15 +114,15 @@ fun NeoMoviesApp() {
                     )
                 }
 
-                composable(NavRoute.Favorites.route) {
+                animatedComposable(NavRoute.Favorites.route) {
                     FavoritesScreen()
                 }
 
-                composable(NavRoute.Profile.route) {
+                animatedComposable(NavRoute.Profile.route) {
                     ProfileScreen()
                 }
 
-                composable(NavRoute.CategoryList.route) { entry ->
+                animatedComposable(NavRoute.CategoryList.route) { entry ->
                     val type = CategoryType.from(entry.arguments?.getString("type"))
                     CategoryListScreen(
                         categoryType = type,
@@ -133,8 +133,8 @@ fun NeoMoviesApp() {
                     )
                 }
 
-                composable(NavRoute.Details.route) { entry ->
-                    val sourceId = entry.arguments?.getString("sourceId") ?: return@composable
+                animatedComposable(NavRoute.Details.route) { entry ->
+                    val sourceId = entry.arguments?.getString("sourceId") ?: return@animatedComposable
                     DetailsScreen(
                         sourceId = sourceId,
                         onBack = { navController.popBackStack() },
