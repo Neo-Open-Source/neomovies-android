@@ -1,0 +1,64 @@
+<resources>
+    <string name="app_name">NeoMovies</string>
+
+    <string name="profile_title">Профиль</string>
+    <string name="settings_title">Настройки</string>
+    <string name="about_title">О приложении</string>
+    <string name="credits_title">Благодарности</string>
+
+    <string name="action_login_with_neo_id">Войти через Neo ID</string>
+    <string name="action_logout">Выйти</string>
+
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_system">Системный</string>
+    <string name="settings_language_ru">Русский</string>
+    <string name="settings_language_en">English</string>
+
+    <string name="about_latest_release">Последний релиз</string>
+    <string name="about_latest_release_desc">Репозиторий приложения</string>
+    <string name="about_telegram_channel">Telegram канал</string>
+    <string name="about_telegram_channel_desc">Новости о приложении</string>
+    <string name="about_credits">Благодарности</string>
+    <string name="about_credits_desc">Спасибо нашим поддерживающим</string>
+    <string name="about_version">Версия</string>
+
+    <string name="credits_loading">Загрузка…</string>
+    <string name="credits_offline_cache">Оффлайн кэш</string>
+
+    <string name="nav_back">Назад</string>
+
+    <string name="tab_home">Главная</string>
+    <string name="tab_favorites">Избранное</string>
+    <string name="favorites_auth_required">Чтобы пользоваться избранным, нужно войти.</string>
+    <string name="favorites_go_to_profile">Перейти в профиль</string>
+    <string name="favorites_empty">Пока нет избранного</string>
+    <string name="favorites_add">Добавить в избранное</string>
+    <string name="favorites_remove">Убрать из избранного</string>
+
+    <string name="home_title">NeoMovies</string>
+    <string name="home_section_popular">Популярное</string>
+    <string name="home_section_top_movies">Топ фильмов</string>
+    <string name="home_section_top_tv">Топ сериалов</string>
+    <string name="action_search">Поиск</string>
+    <string name="action_more">Ещё</string>
+
+    <string name="common_error">Ошибка</string>
+    <string name="action_retry">Повторить</string>
+
+    <string name="search_title">Поиск</string>
+    <string name="search_hint">Введите название</string>
+    <string name="search_start_typing">Начните вводить запрос</string>
+    <string name="search_nothing_found">Ничего не найдено</string>
+
+    <string name="pagination_prev">Назад</string>
+    <string name="pagination_next">Вперёд</string>
+
+    <string name="details_back">Назад</string>
+    <string name="common_separator_dot"> • </string>
+    <string name="details_duration_minutes">%1$d мин</string>
+    <string name="details_rating_format">★ %1$.1f</string>
+
+    <string name="category_popular">Популярное</string>
+    <string name="category_top_movies">Топ фильмов</string>
+    <string name="category_top_tv">Топ сериалов</string>
+</resources>

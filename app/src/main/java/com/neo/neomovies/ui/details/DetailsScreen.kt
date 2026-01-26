@@ -1,5 +1,6 @@
 package com.neo.neomovies.ui.details
  
+import android.content.Context
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,13 +33,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import com.neo.neomovies.ui.util.normalizeImageUrl
+import com.neo.neomovies.R
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,8 +57,16 @@ fun DetailsScreen(
     val viewModel: DetailsViewModel = koinViewModel(parameters = { parametersOf(sourceId) })
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isAuthorized = remember {
+        val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+        !prefs.getString("token", null).isNullOrBlank()
+    }
+
+    val waitForFavorite = isAuthorized && state.details != null && (state.isFavoriteLoading || state.isFavorite == null)
+
     val mode = when {
-        state.isLoading -> DetailsMode.Loading
+        state.isLoading || waitForFavorite -> DetailsMode.Loading
         state.error != null -> DetailsMode.Error
         state.details != null -> DetailsMode.Content
         else -> DetailsMode.Loading
@@ -72,8 +86,25 @@ fun DetailsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.nav_back),
                         )
+                    }
+                },
+                actions = {
+                    val detailsLoaded = state.details != null
+                    val showFavoriteAction = isAuthorized && detailsLoaded
+                    if (showFavoriteAction) {
+                        val isFavorite = state.isFavorite == true
+                        val enabled = !state.isFavoriteLoading && !state.isFavoriteUpdating
+                        val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder
+                        val contentDescription = if (isFavorite) {
+                            stringResource(R.string.favorites_remove)
+                        } else {
+                            stringResource(R.string.favorites_add)
+                        }
+                        IconButton(onClick = { viewModel.toggleFavorite() }, enabled = enabled) {
+                            Icon(imageVector = icon, contentDescription = contentDescription)
+                        }
                     }
                 },
             )
@@ -88,7 +119,7 @@ fun DetailsScreen(
                 }
 
                 DetailsMode.Error -> {
-                    val error = state.error ?: "Ошибка"
+                    val error = state.error ?: stringResource(R.string.common_error)
                     Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                         Text(text = error)
                     }
@@ -216,22 +247,18 @@ private fun DetailsBody(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val title = details.title ?: details.name ?: ""
-        val meta = buildString {
-            val year = details.releaseDate?.take(4)
-            if (!year.isNullOrBlank()) append(year)
-            if (!details.country.isNullOrBlank()) {
-                if (isNotEmpty()) append(" • ")
-                append(details.country)
-            }
-            if (details.duration != null && details.duration > 0) {
-                if (isNotEmpty()) append(" • ")
-                append("${details.duration} мин")
-            }
-            if (details.rating != null && details.rating > 0) {
-                if (isNotEmpty()) append(" • ")
-                append("★ ${details.rating}")
-            }
+        val separator = stringResource(R.string.common_separator_dot)
+        val metaParts = mutableListOf<String>()
+        val year = details.releaseDate?.take(4)
+        if (!year.isNullOrBlank()) metaParts.add(year)
+        if (!details.country.isNullOrBlank()) metaParts.add(details.country)
+        if (details.duration != null && details.duration > 0) {
+            metaParts.add(stringResource(R.string.details_duration_minutes, details.duration))
         }
+        if (details.rating != null && details.rating > 0) {
+            metaParts.add(stringResource(R.string.details_rating_format, details.rating))
+        }
+        val meta = metaParts.joinToString(separator)
 
         Text(text = title, style = MaterialTheme.typography.headlineSmall)
         if (meta.isNotBlank()) {
@@ -241,7 +268,7 @@ private fun DetailsBody(
         val genres = details.genres?.mapNotNull { it.name?.trim() }?.filter { it.isNotBlank() }.orEmpty()
         if (genres.isNotEmpty()) {
             Text(
-                text = genres.joinToString(" • "),
+                text = genres.joinToString(separator),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

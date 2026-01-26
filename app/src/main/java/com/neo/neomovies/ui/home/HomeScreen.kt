@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.MediaPosterCard
 import com.neo.neomovies.ui.navigation.CategoryType
 import org.koin.androidx.compose.koinViewModel
@@ -60,7 +62,7 @@ fun HomeScreen(
 
             HomeMode.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = state.error ?: "Ошибка")
+                    Text(text = state.error ?: stringResource(R.string.common_error))
                 }
             }
 
@@ -78,19 +80,19 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "NeoMovies",
+                                text = stringResource(R.string.home_title),
                                 style = MaterialTheme.typography.headlineSmall,
                                 modifier = Modifier.weight(1f),
                             )
                             IconButton(onClick = onOpenSearch) {
-                                Icon(imageVector = Icons.Filled.Search, contentDescription = "Search")
+                                Icon(imageVector = Icons.Filled.Search, contentDescription = stringResource(R.string.action_search))
                             }
                         }
                     }
 
                     item {
                         HomeSection(
-                            title = "Популярное",
+                            title = stringResource(R.string.home_section_popular),
                             items = state.popular,
                             onMore = { onOpenCategory(CategoryType.POPULAR) },
                             onOpenDetails = onOpenDetails,
@@ -99,7 +101,7 @@ fun HomeScreen(
 
                     item {
                         HomeSection(
-                            title = "Топ фильмов",
+                            title = stringResource(R.string.home_section_top_movies),
                             items = state.topMovies,
                             onMore = { onOpenCategory(CategoryType.TOP_MOVIES) },
                             onOpenDetails = onOpenDetails,
@@ -108,7 +110,7 @@ fun HomeScreen(
 
                     item {
                         HomeSection(
-                            title = "Топ сериалов",
+                            title = stringResource(R.string.home_section_top_tv),
                             items = state.topTv,
                             onMore = { onOpenCategory(CategoryType.TOP_TV) },
                             onOpenDetails = onOpenDetails,
@@ -155,7 +157,7 @@ private fun HomeSection(
                 IconButton(onClick = onMore, modifier = Modifier.size(40.dp)) {
                     Icon(
                         imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = "More",
+                        contentDescription = stringResource(R.string.action_more),
                     )
                 }
             }

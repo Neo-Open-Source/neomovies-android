@@ -19,15 +19,63 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"https://api.neomovies.ru\"")
+        buildConfigField("String", "NEO_ID_BASE_URL", "\"https://id.neomovies.ru\"")
+
+        fun readDotEnv(key: String): String? {
+            val envFile = rootProject.file(".env")
+            if (!envFile.exists()) return null
+
+            return envFile.readLines()
+                .asSequence()
+                .map { it.trim() }
+                .filter { it.isNotBlank() && !it.startsWith("#") }
+                .mapNotNull { line ->
+                    val idx = line.indexOf('=')
+                    if (idx <= 0) return@mapNotNull null
+                    val k = line.substring(0, idx).trim()
+                    val v = line.substring(idx + 1).trim().trim('"').trim('\'')
+                    if (k == key) v else null
+                }
+                .firstOrNull()
+        }
+
+        val neoIdApiKey =
+            (project.findProperty("NEO_ID_API_KEY") as String?)
+                ?: System.getenv("NEO_ID_API_KEY")
+                ?: readDotEnv("NEO_ID_API_KEY")
+                ?: ""
+        buildConfigField("String", "NEO_ID_API_KEY", "\"$neoIdApiKey\"")
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "PRE_RELEASE", "false")
+        }
+
         release {
             isMinifyEnabled = false
+            buildConfigField("boolean", "PRE_RELEASE", "false")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+
+        create("prerelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+            buildConfigField("boolean", "PRE_RELEASE", "true")
+            versionNameSuffix = "-pre"
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
         }
     }
     compileOptions {
@@ -67,6 +115,10 @@ dependencies {
 
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+
+    implementation("androidx.appcompat:appcompat:1.7.0")
+
+    implementation("androidx.browser:browser:1.8.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,3 +1,64 @@
 <resources>
     <string name="app_name">NeoMovies</string>
+
+    <string name="profile_title">Profile</string>
+    <string name="settings_title">Settings</string>
+    <string name="about_title">About</string>
+    <string name="credits_title">Credits</string>
+
+    <string name="action_login_with_neo_id">Login with Neo ID</string>
+    <string name="action_logout">Logout</string>
+
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_ru">Русский</string>
+    <string name="settings_language_en">English</string>
+
+    <string name="about_latest_release">Latest release</string>
+    <string name="about_latest_release_desc">Repository for app</string>
+    <string name="about_telegram_channel">Telegram channel</string>
+    <string name="about_telegram_channel_desc">Telegram channel for news about app</string>
+    <string name="about_credits">Credits</string>
+    <string name="about_credits_desc">Thanks to our supporters</string>
+    <string name="about_version">Version</string>
+
+    <string name="credits_loading">Loading…</string>
+    <string name="credits_offline_cache">Offline cache</string>
+
+    <string name="nav_back">Back</string>
+
+    <string name="tab_home">Home</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="favorites_auth_required">To use favorites, please log in.</string>
+    <string name="favorites_go_to_profile">Go to profile</string>
+    <string name="favorites_empty">No favorites yet</string>
+    <string name="favorites_add">Add to favorites</string>
+    <string name="favorites_remove">Remove from favorites</string>
+
+    <string name="home_title">NeoMovies</string>
+    <string name="home_section_popular">Popular</string>
+    <string name="home_section_top_movies">Top movies</string>
+    <string name="home_section_top_tv">Top TV</string>
+    <string name="action_search">Search</string>
+    <string name="action_more">More</string>
+
+    <string name="common_error">Error</string>
+    <string name="action_retry">Retry</string>
+
+    <string name="search_title">Search</string>
+    <string name="search_hint">Enter title</string>
+    <string name="search_start_typing">Start typing a query</string>
+    <string name="search_nothing_found">Nothing found</string>
+
+    <string name="pagination_prev">Previous</string>
+    <string name="pagination_next">Next</string>
+
+    <string name="details_back">Back</string>
+    <string name="common_separator_dot"> • </string>
+    <string name="details_duration_minutes">%1$d min</string>
+    <string name="details_rating_format">★ %1$.1f</string>
+
+    <string name="category_popular">Popular</string>
+    <string name="category_top_movies">Top movies</string>
+    <string name="category_top_tv">Top TV</string>
 </resources>

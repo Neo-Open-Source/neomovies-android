@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.res.stringResource
+import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.MediaPosterCard
 import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import com.neo.neomovies.ui.navigation.CategoryType
@@ -62,12 +64,12 @@ fun CategoryListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(categoryType.title) },
+                title = { Text(stringResource(categoryType.titleRes)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.nav_back),
                         )
                     }
                 },
@@ -90,7 +92,7 @@ fun CategoryListScreen(
 
                 CategoryMode.Error -> {
                     Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                        Text(text = state.error ?: "Ошибка")
+                        Text(text = state.error ?: stringResource(R.string.common_error))
                     }
                 }
 

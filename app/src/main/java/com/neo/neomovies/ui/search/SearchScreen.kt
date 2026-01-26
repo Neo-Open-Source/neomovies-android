@@ -43,6 +43,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.neo.neomovies.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,12 +78,12 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Поиск") },
+                title = { Text(stringResource(R.string.search_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.nav_back),
                         )
                     }
                 },
@@ -99,7 +101,7 @@ fun SearchScreen(
                 value = state.query,
                 onValueChange = viewModel::setQuery,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Введите название") },
+                label = { Text(stringResource(R.string.search_hint)) },
                 singleLine = true,
             )
 
@@ -114,9 +116,9 @@ fun SearchScreen(
                     SearchMode.Error -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = state.error ?: "Ошибка", color = MaterialTheme.colorScheme.error)
+                                Text(text = state.error ?: stringResource(R.string.common_error), color = MaterialTheme.colorScheme.error)
                                 Button(onClick = viewModel::retry, modifier = Modifier.padding(top = 12.dp)) {
-                                    Text("Повторить")
+                                    Text(stringResource(R.string.action_retry))
                                 }
                             }
                         }
@@ -124,13 +126,13 @@ fun SearchScreen(
 
                     SearchMode.Idle -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = "Начните вводить запрос", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = stringResource(R.string.search_start_typing), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
                     SearchMode.Empty -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = "Ничего не найдено", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = stringResource(R.string.search_nothing_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -203,11 +205,11 @@ private fun PaginationRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onPrev, enabled = page > 1) {
-            Text("Назад")
+            Text(stringResource(R.string.pagination_prev))
         }
         Text(text = "$page / $totalPages")
         TextButton(onClick = onNext, enabled = page < totalPages) {
-            Text("Вперёд")
+            Text(stringResource(R.string.pagination_next))
         }
     }
 }

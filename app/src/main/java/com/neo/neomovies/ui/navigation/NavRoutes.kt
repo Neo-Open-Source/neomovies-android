@@ -1,6 +1,8 @@
 package com.neo.neomovies.ui.navigation
 
 import androidx.compose.runtime.Immutable
+import androidx.annotation.StringRes
+import com.neo.neomovies.R
 
 @Immutable
 sealed class NavRoute(val route: String) {
@@ -8,6 +10,10 @@ sealed class NavRoute(val route: String) {
     data object Favorites : NavRoute("favorites")
     data object Profile : NavRoute("profile")
     data object Search : NavRoute("search")
+    data object Settings : NavRoute("settings")
+    data object Language : NavRoute("settings/language")
+    data object About : NavRoute("about")
+    data object Credits : NavRoute("credits")
     data object Details : NavRoute("details/{sourceId}") {
         fun create(sourceId: String) = "details/$sourceId"
     }
@@ -16,10 +22,10 @@ sealed class NavRoute(val route: String) {
     }
 }
 
-enum class CategoryType(val value: String, val title: String) {
-    POPULAR("popular", "Популярное"),
-    TOP_MOVIES("top_movies", "Топ фильмов"),
-    TOP_TV("top_tv", "Топ сериалов"),
+enum class CategoryType(val value: String, @StringRes val titleRes: Int) {
+    POPULAR("popular", R.string.category_popular),
+    TOP_MOVIES("top_movies", R.string.category_top_movies),
+    TOP_TV("top_tv", R.string.category_top_tv),
 
     ;
 

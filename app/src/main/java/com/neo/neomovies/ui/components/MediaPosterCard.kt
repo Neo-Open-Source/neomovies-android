@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.neo.neomovies.BuildConfig
 import com.neo.neomovies.data.network.dto.MediaDto
 import com.neo.neomovies.ui.util.normalizeImageUrl
 
@@ -33,7 +34,21 @@ fun MediaPosterCard(
         is Number -> v.toLong().toString()
         else -> v?.toString()
     }
-    val poster = normalizeImageUrl(item.kinopoiskId?.toString() ?: rawId)
+    val posterFromId = normalizeImageUrl(item.kinopoiskId?.toString() ?: rawId)
+    val posterFallback = listOfNotNull(
+        item.posterUrlPreview,
+        item.posterUrl,
+        item.posterPath,
+        item.poster,
+    ).firstOrNull { it.isNotBlank() }
+    val poster = posterFromId ?: posterFallback?.let { value ->
+        when {
+            value.startsWith("http") -> value
+            value.startsWith("/") -> BuildConfig.API_BASE_URL.trimEnd('/') + value
+            value.startsWith("api/") || value.startsWith("api/v1/") -> BuildConfig.API_BASE_URL.trimEnd('/') + "/" + value
+            else -> value
+        }
+    }
 
     Column(
         modifier = modifier.let { m -> if (onClick != null) m.clickable { onClick() } else m },
