@@ -90,6 +90,7 @@ jobs:
         env:
           CI: 'true'
           APP_VERSION: ${{ steps.meta.outputs.version }}
+          NEO_ID_API_KEY: ${{ secrets.NEO_ID_API_KEY }}
         run: ./gradlew :app:${{ steps.meta.outputs.task }} --build-cache --no-daemon
 
       - name: Locate APK
