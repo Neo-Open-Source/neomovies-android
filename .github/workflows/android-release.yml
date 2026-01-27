@@ -1,10 +1,26 @@
 name: Android Release
 
 on:
-  push:
-    tags:
-      - 'v*'
-      - '*'
+  release:
+    types:
+      - published
+
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to build'
+        required: true
+        type: string
+      prerelease:
+        description: 'Build prerelease variant'
+        required: true
+        default: true
+        type: boolean
+      upload_to_release:
+        description: 'Upload APK to the GitHub Release with this tag'
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -19,6 +35,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix gradlew permissions
+        run: chmod +x ./gradlew
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -29,13 +48,17 @@ jobs:
         id: meta
         shell: bash
         run: |
-          TAG_NAME="${GITHUB_REF_NAME}"
-          VERSION="${TAG_NAME#v}"
-
-          IS_PRERELEASE=false
-          if [[ "$VERSION" == *"-"* ]]; then
-            IS_PRERELEASE=true
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            IS_PRERELEASE="${{ github.event.release.prerelease }}"
+            UPLOAD_TO_RELEASE=true
+          else
+            TAG_NAME="${{ inputs.tag }}"
+            IS_PRERELEASE="${{ inputs.prerelease }}"
+            UPLOAD_TO_RELEASE="${{ inputs.upload_to_release }}"
           fi
+
+          VERSION="${TAG_NAME#v}"
 
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             VARIANT=prerelease
@@ -49,6 +72,8 @@ jobs:
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           echo "variant=$VARIANT" >> $GITHUB_OUTPUT
           echo "task=$TASK" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "upload_to_release=$UPLOAD_TO_RELEASE" >> $GITHUB_OUTPUT
 
       - name: Build APK
         env:
@@ -66,11 +91,18 @@ jobs:
           echo "path=$APK_PATH" >> $GITHUB_OUTPUT
           echo "name=$APK_NAME" >> $GITHUB_OUTPUT
 
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.path }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: ${{ steps.meta.outputs.upload_to_release == 'true' }}
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: ${{ steps.meta.outputs.tag_name }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           files: |
             ${{ steps.apk.outputs.path }}
