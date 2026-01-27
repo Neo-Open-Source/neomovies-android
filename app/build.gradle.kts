@@ -120,8 +120,6 @@ android {
         buildConfig = true
         viewBinding = true
     }
-
-    setProperty("archivesBaseName", "neomovies")
 }
 
 dependencies {

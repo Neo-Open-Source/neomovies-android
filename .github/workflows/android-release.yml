@@ -101,11 +101,39 @@ jobs:
           echo "dir=$APK_DIR" >> $GITHUB_OUTPUT
           echo "count=$(ls -1 $APK_DIR/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
 
+      - name: Rename APKs
+        id: renamed
+        shell: bash
+        run: |
+          set -e
+          IN_DIR="${{ steps.apk.outputs.dir }}"
+          OUT_DIR="$IN_DIR/renamed"
+          mkdir -p "$OUT_DIR"
+
+          VARIANT="${{ steps.meta.outputs.variant }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          for f in "$IN_DIR"/*.apk; do
+            b="$(basename "$f")"
+            abi="universal"
+            if [[ "$b" == *"arm64-v8a"* ]]; then
+              abi="arm64-v8a"
+            elif [[ "$b" == *"armeabi-v7a"* ]]; then
+              abi="armeabi-v7a"
+            elif [[ "$b" == *"universal"* ]]; then
+              abi="universal"
+            fi
+
+            cp -f "$f" "$OUT_DIR/neomovies-$VARIANT-$VERSION-$abi.apk"
+          done
+
+          echo "dir=$OUT_DIR" >> $GITHUB_OUTPUT
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apks-${{ steps.meta.outputs.variant }}
-          path: ${{ steps.apk.outputs.dir }}/*.apk
+          path: ${{ steps.renamed.outputs.dir }}/*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -115,4 +143,4 @@ jobs:
           name: ${{ steps.meta.outputs.tag_name }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           files: |
-            ${{ steps.apk.outputs.dir }}/*.apk
+            ${{ steps.renamed.outputs.dir }}/*.apk
