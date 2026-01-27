@@ -121,16 +121,7 @@ android {
         viewBinding = true
     }
 
-    applicationVariants.all {
-        val vName = versionName ?: ""
-        outputs.all {
-            @Suppress("UnstableApiUsage")
-            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val abi = outputImpl.getFilter(com.android.build.OutputFile.ABI)
-            val suffix = abi ?: "universal"
-            outputImpl.outputFileName = "neomovies-${name}-$vName-$suffix.apk"
-        }
-    }
+    setProperty("archivesBaseName", "neomovies")
 }
 
 dependencies {
