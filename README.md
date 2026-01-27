@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src=".github/assets/logo.png" width="160" height="160" />
+
 # NeoMovies
 
 ### Movies & series streaming client for Android
