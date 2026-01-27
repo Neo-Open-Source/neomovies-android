@@ -122,6 +122,20 @@ android {
     }
 }
 
+androidComponents {
+    onVariants { variant ->
+        val vName = variant.versionName.orNull ?: ""
+        variant.outputs.forEach { output ->
+            val abi =
+                output.filters
+                    .firstOrNull { it.filterType.name.equals("ABI", ignoreCase = true) }
+                    ?.identifier
+            val suffix = abi ?: "universal"
+            output.outputFileName.set("neomovies-${variant.name}-$vName-$suffix.apk")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
