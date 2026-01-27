@@ -1,14 +1,12 @@
 {
+  "name": "neomovies-site",
+  "private": true,
   "scripts": {
-    "dev": "vuepress dev src",
-    "build": "vuepress build src"
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs",
+    "preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "@vuepress/plugin-google-analytics": "^1.9.10",
-    "@vuepress/plugin-medium-zoom": "^1.9.10",
-    "vuepress": "^1.9.10",
-    "vuepress-plugin-autometa": "^0.1.13",
-    "vuepress-plugin-clean-urls": "^1.1.2",
-    "vuepress-plugin-sitemap": "^2.3.1"
+    "vitepress": "^1.6.4"
   }
 }
