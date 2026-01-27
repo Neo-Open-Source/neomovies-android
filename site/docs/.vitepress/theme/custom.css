@@ -1,0 +1,17 @@
+:root {
+  --nm-radius-logo: 24px;
+  --nm-radius-shot: 12px;
+}
+
+/* Home hero image */
+.VPHero .image img {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--nm-radius-logo);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+/* Make home screenshots look clean */
+.VPContent img {
+  border-radius: var(--nm-radius-shot);
+}
