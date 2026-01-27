@@ -43,6 +43,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Detect version and channel
         id: meta
@@ -79,7 +90,7 @@ jobs:
         env:
           CI: 'true'
           APP_VERSION: ${{ steps.meta.outputs.version }}
-        run: ./gradlew :app:${{ steps.meta.outputs.task }}
+        run: ./gradlew :app:${{ steps.meta.outputs.task }} --build-cache --no-daemon
 
       - name: Locate APK
         id: apk
