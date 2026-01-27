@@ -120,18 +120,15 @@ android {
         buildConfig = true
         viewBinding = true
     }
-}
 
-androidComponents {
-    onVariants { variant ->
-        val vName = variant.versionName.orNull ?: ""
-        variant.outputs.forEach { output ->
-            val abi =
-                output.filters
-                    .firstOrNull { it.filterType.name.equals("ABI", ignoreCase = true) }
-                    ?.identifier
+    applicationVariants.all {
+        val vName = versionName ?: ""
+        outputs.all {
+            @Suppress("UnstableApiUsage")
+            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val abi = outputImpl.getFilter(com.android.build.OutputFile.ABI)
             val suffix = abi ?: "universal"
-            output.outputFileName.set("neomovies-${variant.name}-$vName-$suffix.apk")
+            outputImpl.outputFileName = "neomovies-${name}-$vName-$suffix.apk"
         }
     }
 }
