@@ -14,16 +14,95 @@
     <string name="settings_language_ru">Русский</string>
     <string name="settings_language_en">English</string>
 
+    <string name="settings_torrserver">TorrServer</string>
+
+    <string name="settings_player">Player</string>
+    <string name="settings_player_exoplayer">ExoPlayer</string>
+    <string name="settings_player_mpv">MPV</string>
+    <string name="settings_player_mpv_experimental">MPV (Experimental)</string>
+    <string name="settings_player_vlc">VLC</string>
+
+    <string name="torrserver_status_label">Status: %1$s</string>
+    <string name="torrserver_status_running">Server is running</string>
+    <string name="torrserver_status_stopped">Server is stopped</string>
+    <string name="torrserver_status_not_downloaded">Server file not found</string>
+    <string name="torrserver_installed_version_label">Installed: %1$s</string>
+    <string name="torrserver_version_label">Version (MatriX.xxx)</string>
+    <string name="torrserver_url_label">URL: %1$s</string>
+
+    <string name="torrserver_download">Download server</string>
+    <string name="torrserver_update">Update server</string>
+    <string name="torrserver_start">Start</string>
+    <string name="torrserver_stop">Stop</string>
+    <string name="torrserver_delete">Delete server</string>
+    <string name="torrserver_autostart">Start with app</string>
+
+    <string name="torrserver_delete_title">Delete TorrServer</string>
+    <string name="torrserver_delete_message">This will remove the downloaded TorrServer binary and logs.</string>
+    <string name="torrserver_delete_confirm">Delete</string>
+    <string name="torrserver_delete_cancel">Cancel</string>
+
+    <string name="torrserver_required_title">TorrServer required</string>
+    <string name="torrserver_required_not_downloaded">To play torrents you need to download TorrServer.</string>
+    <string name="torrserver_required_not_running">To play torrents you need to start TorrServer.</string>
+    <string name="torrserver_required_download_and_start">Download &amp; start</string>
+    <string name="torrserver_required_start">Start</string>
+    <string name="torrserver_required_cancel">Cancel</string>
+
+    <string name="torrserver_autostart_prompt_title">Enable autostart?</string>
+    <string name="torrserver_autostart_prompt_message">Start TorrServer automatically when the app launches.</string>
+    <string name="torrserver_autostart_prompt_enable">Enable</string>
+    <string name="torrserver_autostart_prompt_not_now">Not now</string>
+
+    <string name="torrserver_notification_title">TorrServer</string>
+    <string name="torrserver_action_stop">Stop</string>
+    <string name="torrserver_notif_downloading">Downloading TorrServer…</string>
+    <string name="torrserver_notif_downloaded">TorrServer downloaded</string>
+    <string name="torrserver_notif_download_error">Download error</string>
+    <string name="torrserver_notif_starting">Starting TorrServer…</string>
+    <string name="torrserver_notif_stopping">Stopping TorrServer…</string>
+    <string name="torrserver_notif_not_downloaded">TorrServer is not downloaded</string>
+    <string name="torrserver_notif_started">TorrServer started</string>
+    <string name="torrserver_notif_start_error">Start error: %1$s</string>
+    <string name="torrserver_notif_start_failed">Failed to start TorrServer</string>
+
+    <string name="torrserver_logs_title">Logs</string>
+    <string name="torrserver_logs_refresh">Refresh</string>
+    <string name="torrserver_logs_empty">No logs yet</string>
+
+    <string name="torrserver_app_logs_title">App logs</string>
+    <string name="torrserver_app_logs_empty">No app logs yet</string>
+
+    <string name="torrents_not_found">No torrents found</string>
+    <string name="select_file">Select file</string>
+    <string name="torrent_quality_unknown">TOR</string>
+    <string name="torrent_seeds_format">%1$s • %2$d seeds</string>
+
     <string name="about_latest_release">Latest release</string>
     <string name="about_latest_release_desc">Repository for app</string>
+    <string name="about_prereleases">Prereleases</string>
+    <string name="about_prereleases_desc">All prerelease builds</string>
     <string name="about_telegram_channel">Telegram channel</string>
     <string name="about_telegram_channel_desc">Telegram channel for news about app</string>
     <string name="about_credits">Credits</string>
     <string name="about_credits_desc">Thanks to our supporters</string>
+    <string name="about_changes">Changes</string>
+    <string name="about_changes_desc">What’s new in this version</string>
     <string name="about_version">Version</string>
+
+    <string name="changes_title">Changes</string>
+    <string name="changes_version_label">Version: %1$s</string>
+
+    <string-array name="changes_history">
+        <item>0.1.0-pre1||- Initial prerelease\n- Add players: ExoPlayer and libMPV\n- Add TorrServer and made small improves.</item>
+    </string-array>
 
     <string name="credits_loading">Loading…</string>
     <string name="credits_offline_cache">Offline cache</string>
+
+    <string name="credits_section_libraries">Libraries &amp; open-source</string>
+    <string name="credits_section_thanks">Thanks</string>
+    <string name="credits_section_supporters">Supporters</string>
 
     <string name="nav_back">Back</string>
 
@@ -41,6 +120,13 @@
     <string name="home_section_top_tv">Top TV</string>
     <string name="action_search">Search</string>
     <string name="action_more">More</string>
+    <string name="action_watch">Watch</string>
+
+    <string name="lumex_select_season">Select season</string>
+    <string name="lumex_select_episode">Select episode</string>
+    <string name="lumex_select_voiceover">Select voiceover</string>
+    <string name="lumex_select_quality">Select quality</string>
+    <string name="lumex_no_data">No sources available</string>
 
     <string name="common_error">Error</string>
     <string name="action_retry">Retry</string>
@@ -57,6 +143,42 @@
     <string name="common_separator_dot"> • </string>
     <string name="details_duration_minutes">%1$d min</string>
     <string name="details_rating_format">★ %1$.1f</string>
+
+    <string name="player_title">Player</string>
+    <string name="player_video_placeholder">Video surface (stub)</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_rewind_10">Rewind 10 seconds</string>
+    <string name="player_forward_10">Forward 10 seconds</string>
+    <string name="player_captions">Captions</string>
+    <string name="player_settings">Settings</string>
+    <string name="player_fullscreen">Fullscreen</string>
+    <string name="player_time_format">%1$02d:%2$02d</string>
+    <string name="player_debug_source_id">Source: %1$s</string>
+
+    <string name="player_controls_exit">Exit</string>
+    <string name="player_controls_lock">Lock controls</string>
+    <string name="player_controls_play_pause">Play/Pause</string>
+    <string name="player_controls_rewind">Rewind</string>
+    <string name="player_controls_fast_forward">Fast forward</string>
+    <string name="player_controls_skip_back">Skip back</string>
+    <string name="player_controls_skip_forward">Skip forward</string>
+    <string name="player_controls_progress">Seek</string>
+
+    <string name="picture_in_picture">Picture in picture</string>
+    <string name="select_playback_speed">Select playback speed</string>
+    <string name="select_audio_track">Select audio track</string>
+    <string name="select_subtitle_track">Select subtitle track</string>
+    <string name="none">None</string>
+
+    <string name="player_trickplay">Trickplay preview</string>
+    <string name="player_controls_skip_intro">Skip intro</string>
+    <string name="player_controls_skip_outro">Skip outro</string>
+    <string name="player_controls_skip_recap">Skip recap</string>
+    <string name="player_controls_skip_commercial">Skip commercials</string>
+    <string name="player_controls_skip_preview">Skip preview</string>
+    <string name="player_controls_skip_unknown">Skip</string>
+    <string name="player_controls_next_episode">Next episode</string>
 
     <string name="category_popular">Popular</string>
     <string name="category_top_movies">Top movies</string>

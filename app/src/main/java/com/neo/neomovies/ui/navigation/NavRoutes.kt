@@ -2,6 +2,7 @@ package com.neo.neomovies.ui.navigation
 
 import androidx.compose.runtime.Immutable
 import androidx.annotation.StringRes
+import android.net.Uri
 import com.neo.neomovies.R
 
 @Immutable
@@ -10,10 +11,19 @@ sealed class NavRoute(val route: String) {
     data object Favorites : NavRoute("favorites")
     data object Profile : NavRoute("profile")
     data object Search : NavRoute("search")
+    data object WatchSelector : NavRoute("watch/{sourceId}") {
+        fun create(sourceId: String) = "watch/$sourceId"
+    }
+    data object Player : NavRoute("player/{sourceId}") {
+        fun create(sourceId: String) = "player/${Uri.encode(sourceId)}"
+    }
     data object Settings : NavRoute("settings")
     data object Language : NavRoute("settings/language")
+    data object TorrServer : NavRoute("settings/torrserver")
+    data object PlayerSettings : NavRoute("settings/player")
     data object About : NavRoute("about")
     data object Credits : NavRoute("credits")
+    data object Changes : NavRoute("changes")
     data object Details : NavRoute("details/{sourceId}") {
         fun create(sourceId: String) = "details/$sourceId"
     }

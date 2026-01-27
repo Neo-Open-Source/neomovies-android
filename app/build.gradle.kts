@@ -9,12 +9,38 @@ android {
         version = release(36)
     }
 
+    packaging {
+        jniLibs {
+            pickFirsts += setOf(
+                "**/libc++_shared.so",
+            )
+        }
+    }
+
     defaultConfig {
         applicationId = "com.neo.neomovies"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        minSdk = 26
+        targetSdk = 28
+
+        fun parseVersionName(raw: String?): String? {
+            val v = raw?.trim()?.removePrefix("refs/tags/")?.removePrefix("v")
+            return v?.takeIf { it.matches(Regex("\\d+\\.\\d+\\.\\d+([.-].+)?")) }
+        }
+
+        fun computeVersionCode(versionName: String): Int {
+            val numeric = versionName.substringBefore('-').substringBefore('+')
+            val parts = numeric.split('.')
+            val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
+            val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
+            val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
+            return (major * 10000) + (minor * 100) + patch
+        }
+
+        val envVersion = parseVersionName(System.getenv("APP_VERSION"))
+        val tagVersion = parseVersionName(System.getenv("GITHUB_REF_NAME"))
+        val finalVersionName = envVersion ?: tagVersion ?: "0.1.0"
+        versionName = finalVersionName
+        versionCode = computeVersionCode(finalVersionName)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -47,6 +73,11 @@ android {
         buildConfigField("String", "NEO_ID_API_KEY", "\"$neoIdApiKey\"")
     }
 
+    lint {
+        disable += "ExpiredTargetSdkVersion"
+        abortOnError = false
+    }
+
     buildTypes {
         debug {
             buildConfigField("boolean", "PRE_RELEASE", "false")
@@ -55,6 +86,9 @@ android {
         release {
             isMinifyEnabled = false
             buildConfigField("boolean", "PRE_RELEASE", "false")
+            if (System.getenv("CI") == "true") {
+                signingConfig = signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -66,7 +100,6 @@ android {
             matchingFallbacks += listOf("release")
             isDebuggable = false
             buildConfigField("boolean", "PRE_RELEASE", "true")
-            versionNameSuffix = "-pre"
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -85,6 +118,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        viewBinding = true
     }
 }
 
@@ -110,6 +144,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.moshi)
     implementation(libs.moshi.kotlin)
+    implementation(libs.gson)
 
     implementation(libs.coil.compose)
 
@@ -118,7 +153,22 @@ dependencies {
 
     implementation("androidx.appcompat:appcompat:1.7.0")
 
+    implementation("androidx.media3:media3-exoplayer:1.9.0")
+    implementation("androidx.media3:media3-exoplayer-hls:1.9.0")
+    implementation("androidx.media3:media3-exoplayer-dash:1.9.0")
+    implementation("androidx.media3:media3-ui:1.9.0")
+    implementation("androidx.media3:media3-session:1.9.0")
+
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
+    implementation("com.google.android.material:material:1.12.0")
+
     implementation("androidx.browser:browser:1.8.0")
+
+    implementation("org.jsoup:jsoup:1.17.2")
+    implementation(libs.libmpv)
+
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

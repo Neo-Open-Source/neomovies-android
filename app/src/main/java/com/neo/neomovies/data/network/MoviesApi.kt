@@ -61,13 +61,13 @@ interface MoviesApi {
     suspend fun addToFavorites(
         @Path("id") id: String,
         @Query("type") type: String,
-    ): ApiEnvelopeDto<Unit>
+    ): ApiEnvelopeDto<Any>
 
     @DELETE("api/v1/favorites/{id}")
     suspend fun removeFromFavorites(
         @Path("id") id: String,
         @Query("type") type: String,
-    ): ApiEnvelopeDto<Unit>
+    ): ApiEnvelopeDto<Any>
 
     @GET("api/v1/favorites/{id}/check")
     suspend fun checkIsFavorite(

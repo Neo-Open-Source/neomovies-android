@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -21,17 +22,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import com.neo.neomovies.BuildConfig
 import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.PreferenceItem
 
 private const val telegramChannelUrl = "https://t.me/neomovies_news"
 private const val latestReleaseUrl = "https://github.com/Neo-Open-Source/neomovies-android/releases/latest"
+private const val preReleasesUrl = "https://github.com/Neo-Open-Source/neomovies-android/releases"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
     onBack: () -> Unit,
     onOpenCredits: () -> Unit,
+    onOpenChanges: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -63,6 +67,16 @@ fun AboutScreen(
                 ) { uriHandler.openUri(latestReleaseUrl) }
             }
 
+            if (BuildConfig.PRE_RELEASE) {
+                item {
+                    PreferenceItem(
+                        title = stringResource(R.string.about_prereleases),
+                        description = stringResource(R.string.about_prereleases_desc),
+                        icon = Icons.Outlined.NewReleases,
+                    ) { uriHandler.openUri(preReleasesUrl) }
+                }
+            }
+
             item {
                 PreferenceItem(
                     title = stringResource(R.string.about_telegram_channel),
@@ -77,6 +91,14 @@ fun AboutScreen(
                     description = stringResource(R.string.about_credits_desc),
                     icon = Icons.Outlined.AutoAwesome,
                 ) { onOpenCredits() }
+            }
+
+            item {
+                PreferenceItem(
+                    title = stringResource(R.string.about_changes),
+                    description = stringResource(R.string.about_changes_desc),
+                    icon = Icons.Outlined.ReceiptLong,
+                ) { onOpenChanges() }
             }
 
             item {

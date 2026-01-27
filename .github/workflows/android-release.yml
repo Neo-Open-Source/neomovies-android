@@ -1,0 +1,76 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Detect version and channel
+        id: meta
+        shell: bash
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          VERSION="${TAG_NAME#v}"
+
+          IS_PRERELEASE=false
+          if [[ "$VERSION" == *"-"* ]]; then
+            IS_PRERELEASE=true
+          fi
+
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            VARIANT=prerelease
+            TASK=assemblePrerelease
+          else
+            VARIANT=release
+            TASK=assembleRelease
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "variant=$VARIANT" >> $GITHUB_OUTPUT
+          echo "task=$TASK" >> $GITHUB_OUTPUT
+
+      - name: Build APK
+        env:
+          CI: 'true'
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+        run: ./gradlew :app:${{ steps.meta.outputs.task }}
+
+      - name: Locate APK
+        id: apk
+        shell: bash
+        run: |
+          set -e
+          APK_PATH=$(ls -1 app/build/outputs/apk/${{ steps.meta.outputs.variant }}/*.apk | head -n 1)
+          APK_NAME=$(basename "$APK_PATH")
+          echo "path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "name=$APK_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: ${{ steps.meta.outputs.is_prerelease }}
+          files: |
+            ${{ steps.apk.outputs.path }}

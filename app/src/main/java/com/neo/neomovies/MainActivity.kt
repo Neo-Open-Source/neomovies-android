@@ -1,11 +1,16 @@
 package com.neo.neomovies
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.content.PermissionChecker
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -15,11 +20,14 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
@@ -40,19 +48,37 @@ import com.neo.neomovies.ui.about.CreditsScreen
 import com.neo.neomovies.ui.profile.ProfileScreen
 import com.neo.neomovies.ui.search.SearchScreen
 import com.neo.neomovies.ui.settings.SettingsScreen
+import com.neo.neomovies.ui.settings.TorrServerSettingsScreen
 import com.neo.neomovies.ui.settings.LanguageScreen
 import com.neo.neomovies.ui.settings.LanguageManager
 import com.neo.neomovies.ui.settings.LanguageMode
 import com.neo.neomovies.ui.theme.NeoMoviesTheme
 import com.neo.neomovies.ui.motion.animatedComposable
+import com.neo.neomovies.ui.watch.WatchSelectorScreen
+import com.neo.player.PlayerActivity
 
 class MainActivity : AppCompatActivity() {
     private lateinit var neoIdAuthManager: NeoIdAuthManager
+
+    private val notificationsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         neoIdAuthManager = NeoIdAuthManager(this)
         handleAuthCallbackIfNeeded(intent)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted =
+                PermissionChecker.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PermissionChecker.PERMISSION_GRANTED
+            if (!granted) {
+                notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         enableEdgeToEdge()
         setContent {
             NeoMoviesTheme {
@@ -182,19 +208,36 @@ fun NeoMoviesApp(
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onOpenLanguage = { navController.navigate(NavRoute.Language.route) },
+                        onOpenTorrServer = { navController.navigate(NavRoute.TorrServer.route) },
+                        onOpenPlayer = { navController.navigate(NavRoute.PlayerSettings.route) },
                     )
+                }
+
+                animatedComposable(NavRoute.TorrServer.route) {
+                    TorrServerSettingsScreen(onBack = { navController.popBackStack() })
                 }
 
                 animatedComposable(NavRoute.Language.route) {
                     LanguageScreen(onBack = { navController.popBackStack() })
                 }
 
+                animatedComposable(NavRoute.PlayerSettings.route) {
+                    com.neo.neomovies.ui.settings.PlayerSettingsScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
                 animatedComposable(NavRoute.About.route) {
                     AboutScreen(
                         onBack = { navController.popBackStack() },
                         onOpenCredits = { navController.navigate(NavRoute.Credits.route) },
+                        onOpenChanges = { navController.navigate(NavRoute.Changes.route) },
                         onOpenSettings = { navController.navigate(NavRoute.Settings.route) },
                     )
+                }
+
+                animatedComposable(NavRoute.Changes.route) {
+                    com.neo.neomovies.ui.about.ChangesScreen(onBack = { navController.popBackStack() })
                 }
 
                 animatedComposable(NavRoute.Credits.route) {
@@ -217,7 +260,57 @@ fun NeoMoviesApp(
                     DetailsScreen(
                         sourceId = sourceId,
                         onBack = { navController.popBackStack() },
+                        onWatch = { navController.navigate(NavRoute.WatchSelector.create(sourceId)) },
                     )
+                }
+
+                animatedComposable(NavRoute.WatchSelector.route) { entry ->
+                    val sourceId = entry.arguments?.getString("sourceId") ?: return@animatedComposable
+                    val context = LocalContext.current
+                    WatchSelectorScreen(
+                        sourceId = sourceId,
+                        onBack = { navController.popBackStack() },
+                        onWatch = { urls, names, startIndex, title ->
+                            val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
+                            context.startActivity(
+                                when (mode) {
+                                    com.neo.neomovies.ui.settings.PlayerEngineMode.EXO ->
+                                        com.neo.player.PlayerActivity.intentExo(
+                                            context,
+                                            urls = urls,
+                                            names = names,
+                                            startIndex = startIndex,
+                                            title = title,
+                                        )
+                                    com.neo.neomovies.ui.settings.PlayerEngineMode.MPV ->
+                                        com.neo.player.PlayerActivity.intent(
+                                            context,
+                                            urls = urls,
+                                            names = names,
+                                            startIndex = startIndex,
+                                            title = title,
+                                        )
+                                },
+                            )
+                            navController.popBackStack()
+                        },
+                    )
+                }
+
+                animatedComposable(NavRoute.Player.route) { entry ->
+                    val sourceId = entry.arguments?.getString("sourceId") ?: return@animatedComposable
+                    val context = LocalContext.current
+                    LaunchedEffect(sourceId) {
+                        context.startActivity(
+                            when (com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)) {
+                                com.neo.neomovies.ui.settings.PlayerEngineMode.EXO ->
+                                    PlayerActivity.intentExo(context, url = sourceId)
+                                com.neo.neomovies.ui.settings.PlayerEngineMode.MPV ->
+                                    PlayerActivity.intent(context, url = sourceId)
+                            },
+                        )
+                        navController.popBackStack()
+                    }
                 }
             }
     }

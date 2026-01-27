@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -53,6 +54,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 fun DetailsScreen(
     sourceId: String,
     onBack: () -> Unit,
+    onWatch: () -> Unit,
 ) {
     val viewModel: DetailsViewModel = koinViewModel(parameters = { parametersOf(sourceId) })
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
@@ -138,7 +140,7 @@ fun DetailsScreen(
                             .fillMaxSize()
                             .padding(padding),
                     ) {
-                        val isTablet = this.maxWidth >= 600.dp
+                        val isTablet = maxWidth >= 720.dp
 
                         if (isTablet) {
                             Column(
@@ -158,7 +160,11 @@ fun DetailsScreen(
                                         isTablet = true,
                                         modifier = Modifier.width(260.dp),
                                     )
-                                    DetailsBody(details = details, modifier = Modifier.weight(1f))
+                                    DetailsBody(
+                                        details = details,
+                                        onWatch = onWatch,
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
                             }
                         } else {
@@ -177,6 +183,7 @@ fun DetailsScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 DetailsBody(
                                     details = details,
+                                    onWatch = onWatch,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp),
@@ -188,12 +195,6 @@ fun DetailsScreen(
             }
         }
     }
-}
-
-private enum class DetailsMode {
-    Loading,
-    Error,
-    Content,
 }
 
 @Composable
@@ -240,6 +241,7 @@ private fun Poster(
 @Composable
 private fun DetailsBody(
     details: com.neo.neomovies.data.network.dto.MediaDetailsDto,
+    onWatch: () -> Unit,
     modifier: Modifier,
 ) {
     Column(
@@ -260,7 +262,22 @@ private fun DetailsBody(
         }
         val meta = metaParts.joinToString(separator)
 
-        Text(text = title, style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Button(onClick = onWatch) {
+                Text(text = stringResource(R.string.action_watch))
+            }
+        }
         if (meta.isNotBlank()) {
             Text(text = meta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -278,4 +295,10 @@ private fun DetailsBody(
             Text(text = it, style = MaterialTheme.typography.bodyLarge)
         }
     }
+}
+
+private enum class DetailsMode {
+    Loading,
+    Error,
+    Content,
 }

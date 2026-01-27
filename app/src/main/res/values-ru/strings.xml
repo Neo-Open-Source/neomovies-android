@@ -14,16 +14,39 @@
     <string name="settings_language_ru">Русский</string>
     <string name="settings_language_en">English</string>
 
+    <string name="settings_torrserver">TorrServer</string>
+
+    <string name="settings_player">Player</string>
+    <string name="settings_player_exoplayer">ExoPlayer</string>
+    <string name="settings_player_mpv">MPV</string>
+    <string name="settings_player_mpv_experimental">MPV (Экспериментально)</string>
+    <string name="settings_player_vlc">VLC</string>
+
     <string name="about_latest_release">Последний релиз</string>
     <string name="about_latest_release_desc">Репозиторий приложения</string>
+    <string name="about_prereleases">Пререлизы</string>
+    <string name="about_prereleases_desc">Все пререлиз-сборки</string>
     <string name="about_telegram_channel">Telegram канал</string>
     <string name="about_telegram_channel_desc">Новости о приложении</string>
     <string name="about_credits">Благодарности</string>
     <string name="about_credits_desc">Спасибо нашим поддерживающим</string>
+    <string name="about_changes">Изменения</string>
+    <string name="about_changes_desc">Что нового в этой версии</string>
     <string name="about_version">Версия</string>
+
+    <string name="changes_title">Изменения</string>
+    <string name="changes_version_label">Версия: %1$s</string>
+
+    <string-array name="changes_history">
+        <item>0.1.0-pre1||- Первый пререлиз\n- Добавлены плееры: ExoPlayer и libMPV\n- Добавлен Torrserver и мелкие исправления.</item>
+    </string-array>
 
     <string name="credits_loading">Загрузка…</string>
     <string name="credits_offline_cache">Оффлайн кэш</string>
+
+    <string name="credits_section_libraries">Библиотеки и open-source</string>
+    <string name="credits_section_thanks">Благодарности</string>
+    <string name="credits_section_supporters">Поддержавшие</string>
 
     <string name="nav_back">Назад</string>
 
@@ -40,7 +63,14 @@
     <string name="home_section_top_movies">Топ фильмов</string>
     <string name="home_section_top_tv">Топ сериалов</string>
     <string name="action_search">Поиск</string>
-    <string name="action_more">Ещё</string>
+    <string name="action_more">Больше</string>
+    <string name="action_watch">Смотреть</string>
+
+    <string name="lumex_select_season">Выберите сезон</string>
+    <string name="lumex_select_episode">Выберите серию</string>
+    <string name="lumex_select_voiceover">Выберите озвучку</string>
+    <string name="lumex_select_quality">Выберите качество</string>
+    <string name="lumex_no_data">Нет доступных источников</string>
 
     <string name="common_error">Ошибка</string>
     <string name="action_retry">Повторить</string>
@@ -57,6 +87,97 @@
     <string name="common_separator_dot"> • </string>
     <string name="details_duration_minutes">%1$d мин</string>
     <string name="details_rating_format">★ %1$.1f</string>
+
+    <string name="player_title">Плеер</string>
+    <string name="player_video_placeholder">Здесь будет видео (заглушка)</string>
+    <string name="player_play">Воспроизвести</string>
+    <string name="player_pause">Пауза</string>
+    <string name="player_rewind_10">Назад на 10 секунд</string>
+    <string name="player_forward_10">Вперёд на 10 секунд</string>
+    <string name="player_captions">Субтитры</string>
+    <string name="player_settings">Настройки</string>
+    <string name="player_fullscreen">На весь экран</string>
+    <string name="player_time_format">%1$02d:%2$02d</string>
+    <string name="player_debug_source_id">Источник: %1$s</string>
+
+    <string name="player_controls_exit">Выход</string>
+    <string name="player_controls_lock">Заблокировать управление</string>
+    <string name="player_controls_play_pause">Воспроизведение / Пауза</string>
+    <string name="player_controls_rewind">Перемотка назад</string>
+    <string name="player_controls_fast_forward">Перемотка вперёд</string>
+    <string name="player_controls_skip_back">Назад</string>
+    <string name="player_controls_skip_forward">Вперёд</string>
+    <string name="player_controls_progress">Перемотка</string>
+
+    <string name="picture_in_picture">Картинка в картинке</string>
+    <string name="select_playback_speed">Скорость воспроизведения</string>
+    <string name="select_audio_track">Выбор аудиодорожки</string>
+    <string name="select_subtitle_track">Выбор субтитров</string>
+    <string name="none">Нет</string>
+
+    <string name="player_trickplay">Превью при перемотке</string>
+    <string name="player_controls_skip_intro">Пропустить интро</string>
+    <string name="player_controls_skip_outro">Пропустить аутро</string>
+    <string name="player_controls_skip_recap">Пропустить recap</string>
+    <string name="player_controls_skip_commercial">Пропустить рекламу</string>
+    <string name="player_controls_skip_preview">Пропустить превью</string>
+    <string name="player_controls_skip_unknown">Пропустить</string>
+    <string name="player_controls_next_episode">Следующая серия</string>
+
+    <string name="torrserver_status_label">Статус: %1$s</string>
+    <string name="torrserver_status_running">Сервер запущен</string>
+    <string name="torrserver_status_stopped">Сервер остановлен</string>
+    <string name="torrserver_status_not_downloaded">Файл сервера не найден</string>
+    <string name="torrserver_installed_version_label">Установлено: %1$s</string>
+    <string name="torrserver_version_label">Версия (MatriX.xxx)</string>
+    <string name="torrserver_url_label">URL: %1$s</string>
+
+    <string name="torrserver_download">Скачать сервер</string>
+    <string name="torrserver_update">Обновить сервер</string>
+    <string name="torrserver_start">Запустить</string>
+    <string name="torrserver_stop">Остановить</string>
+    <string name="torrserver_delete">Удалить сервер</string>
+    <string name="torrserver_autostart">Запускать при запуске приложения</string>
+
+    <string name="torrserver_delete_title">Удалить TorrServer</string>
+    <string name="torrserver_delete_message">Будет удалён скачанный TorrServer и логи.</string>
+    <string name="torrserver_delete_confirm">Удалить</string>
+    <string name="torrserver_delete_cancel">Отмена</string>
+
+    <string name="torrserver_required_title">Нужен TorrServer</string>
+    <string name="torrserver_required_not_downloaded">Для воспроизведения торрентов нужно скачать TorrServer.</string>
+    <string name="torrserver_required_not_running">Для воспроизведения торрентов нужно запустить TorrServer.</string>
+    <string name="torrserver_required_download_and_start">Скачать и запустить</string>
+    <string name="torrserver_required_start">Запустить</string>
+    <string name="torrserver_required_cancel">Отмена</string>
+
+    <string name="torrserver_autostart_prompt_title">Включить автозапуск?</string>
+    <string name="torrserver_autostart_prompt_message">Запускать TorrServer автоматически при запуске приложения.</string>
+    <string name="torrserver_autostart_prompt_enable">Включить</string>
+    <string name="torrserver_autostart_prompt_not_now">Не сейчас</string>
+
+    <string name="torrserver_notification_title">TorrServer</string>
+    <string name="torrserver_action_stop">Остановить</string>
+    <string name="torrserver_notif_downloading">Скачивание TorrServer…</string>
+    <string name="torrserver_notif_downloaded">TorrServer скачан</string>
+    <string name="torrserver_notif_download_error">Ошибка скачивания TorrServer</string>
+    <string name="torrserver_notif_starting">Запуск TorrServer…</string>
+    <string name="torrserver_notif_stopping">Остановка TorrServer…</string>
+    <string name="torrserver_notif_not_downloaded">TorrServer не скачан</string>
+    <string name="torrserver_notif_started">TorrServer запущен</string>
+    <string name="torrserver_notif_start_error">Ошибка запуска: %1$s</string>
+    <string name="torrserver_notif_start_failed">Ошибка запуска TorrServer</string>
+
+    <string name="torrserver_logs_title">Логи</string>
+    <string name="torrserver_logs_refresh">Обновить</string>
+    <string name="torrserver_logs_empty">Логов пока нет</string>
+
+    <string name="torrserver_app_logs_title">Логи приложения</string>
+    <string name="torrserver_app_logs_empty">Логов приложения пока нет</string>
+
+    <string name="torrents_not_found">Торренты не найдены</string>
+    <string name="torrent_quality_unknown">TOR</string>
+    <string name="torrent_seeds_format">%1$s • %2$d сидов</string>
 
     <string name="category_popular">Популярное</string>
     <string name="category_top_movies">Топ фильмов</string>

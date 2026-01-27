@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,7 +26,15 @@ import com.neo.neomovies.ui.components.PreferenceItem
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenLanguage: () -> Unit,
+    onOpenTorrServer: () -> Unit,
+    onOpenPlayer: () -> Unit,
 ) {
+    val engineLabel =
+        when (PlayerEngineManager.getMode(androidx.compose.ui.platform.LocalContext.current)) {
+            PlayerEngineMode.EXO -> stringResource(R.string.settings_player_exoplayer)
+            PlayerEngineMode.MPV -> stringResource(R.string.settings_player_mpv_experimental)
+        }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -46,6 +56,20 @@ fun SettingsScreen(
                 description = null,
                 icon = Icons.Outlined.Language,
                 onClick = onOpenLanguage,
+            )
+
+            PreferenceItem(
+                title = stringResource(R.string.settings_torrserver),
+                description = null,
+                icon = Icons.Outlined.CloudDownload,
+                onClick = onOpenTorrServer,
+            )
+
+            PreferenceItem(
+                title = stringResource(R.string.settings_player),
+                description = engineLabel,
+                icon = Icons.Outlined.PlayCircleOutline,
+                onClick = onOpenPlayer,
             )
         }
     }
