@@ -32,7 +32,7 @@ jobs:
           cache-dependency-path: site/package-lock.json
 
       - name: Install
-        run: npm ci
+        run: npm install
         working-directory: site
 
       - name: Build
