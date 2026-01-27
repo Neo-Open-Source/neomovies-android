@@ -86,16 +86,15 @@ jobs:
         shell: bash
         run: |
           set -e
-          APK_PATH=$(ls -1 app/build/outputs/apk/${{ steps.meta.outputs.variant }}/*.apk | head -n 1)
-          APK_NAME=$(basename "$APK_PATH")
-          echo "path=$APK_PATH" >> $GITHUB_OUTPUT
-          echo "name=$APK_NAME" >> $GITHUB_OUTPUT
+          APK_DIR="app/build/outputs/apk/${{ steps.meta.outputs.variant }}"
+          echo "dir=$APK_DIR" >> $GITHUB_OUTPUT
+          echo "count=$(ls -1 $APK_DIR/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.apk.outputs.name }}
-          path: ${{ steps.apk.outputs.path }}
+          name: apks-${{ steps.meta.outputs.variant }}
+          path: ${{ steps.apk.outputs.dir }}/*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -105,4 +104,4 @@ jobs:
           name: ${{ steps.meta.outputs.tag_name }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           files: |
-            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.dir }}/*.apk
