@@ -75,6 +75,9 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                 onBack = { navController.popBackStack() },
                 onWatch = { urls, names, startIndex, title ->
                     val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
+                    val useCollapsHeaders =
+                        com.neo.neomovies.ui.settings.SourceManager.getMode(context) ==
+                            com.neo.neomovies.ui.settings.SourceMode.COLLAPS
                     val intent =
                         when (mode) {
                             com.neo.neomovies.ui.settings.PlayerEngineMode.EXO ->
@@ -92,6 +95,7 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                                     names = names,
                                     startIndex = startIndex,
                                     title = title,
+                                    useCollapsHeaders = useCollapsHeaders,
                                 )
                         }
                     context.startActivity(intent)

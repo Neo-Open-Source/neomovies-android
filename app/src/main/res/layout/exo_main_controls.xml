@@ -52,6 +52,7 @@
             android:id="@+id/extra_buttons"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent">
@@ -59,7 +60,7 @@
             <ImageButton
                 android:id="@+id/btn_speed"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_gravity="end"
                 android:background="@drawable/transparent_circle_background"
                 android:contentDescription="@string/select_playback_speed"
@@ -67,31 +68,37 @@
                 android:src="@drawable/ic_gauge"
                 app:tint="@android:color/white" />
 
-            <Space
-                android:id="@+id/space_speed"
-                android:layout_width="16dp"
-                android:layout_height="0dp" />
+            <ImageButton
+                android:id="@+id/btn_quality"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/transparent_circle_background"
+                android:contentDescription="@string/select_video_quality"
+                android:padding="16dp"
+                android:src="@drawable/ic_quality"
+                android:visibility="gone"
+                app:tint="@android:color/white" />
 
             <ImageButton
                 android:id="@+id/btn_audio_track"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/transparent_circle_background"
                 android:contentDescription="@string/select_audio_track"
                 android:padding="16dp"
                 android:src="@drawable/ic_speaker"
                 app:tint="@android:color/white" />
 
-            <Space
-                android:layout_width="16dp"
-                android:layout_height="0dp" />
-
             <ImageButton
                 android:id="@+id/btn_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/transparent_circle_background"
                 android:contentDescription="@string/select_subtitle_track"
                 android:padding="16dp"

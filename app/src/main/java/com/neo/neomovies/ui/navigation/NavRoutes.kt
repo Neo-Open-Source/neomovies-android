@@ -20,6 +20,7 @@ sealed class NavRoute(val route: String) {
     data object Settings : NavRoute("settings")
     data object Language : NavRoute("settings/language")
     data object TorrServer : NavRoute("settings/torrserver")
+    data object SourceSettings : NavRoute("settings/source")
     data object PlayerSettings : NavRoute("settings/player")
     data object About : NavRoute("about")
     data object Credits : NavRoute("credits")

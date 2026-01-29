@@ -55,6 +55,10 @@ class MPVPlayer(
     private val videoOutput: String = "gpu",
     private val audioOutput: String = "audiotrack",
     private val hwDec: String = "mediacodec",
+    private val httpUserAgent: String? = null,
+    private val httpReferrer: String? = null,
+    private val httpHeaderFields: String? = null,
+    private val defaultAid: Int? = null,
 ) : BasePlayer(), MPVLib.EventObserver, AudioManager.OnAudioFocusChangeListener {
 
     private val audioManager: AudioManager by lazy { context.getSystemService()!! }
@@ -146,6 +150,10 @@ class MPVPlayer(
         videoOutput = builder.videoOutput,
         audioOutput = builder.audioOutput,
         hwDec = builder.hwDec,
+        httpUserAgent = builder.httpUserAgent,
+        httpReferrer = builder.httpReferrer,
+        httpHeaderFields = builder.httpHeaderFields,
+        defaultAid = builder.defaultAid,
     )
 
     class Builder(val context: Context) {
@@ -176,6 +184,18 @@ class MPVPlayer(
         var hwDec: String = "mediacodec"
             private set
 
+        var httpUserAgent: String? = null
+            private set
+
+        var httpReferrer: String? = null
+            private set
+
+        var httpHeaderFields: String? = null
+            private set
+
+        var defaultAid: Int? = null
+            private set
+
         fun setAudioAttributes(audioAttributes: AudioAttributes, handleAudioFocus: Boolean) = apply {
             this.audioAttributes = audioAttributes
             this.handleAudioFocus = handleAudioFocus
@@ -202,6 +222,20 @@ class MPVPlayer(
         fun setAudioOutput(audioOutput: String) = apply { this.audioOutput = audioOutput }
 
         fun setHwDec(hwDec: String) = apply { this.hwDec = hwDec }
+
+        fun setHttpHeaders(
+            userAgent: String? = null,
+            referrer: String? = null,
+            headerFields: String? = null,
+        ) = apply {
+            this.httpUserAgent = userAgent
+            this.httpReferrer = referrer
+            this.httpHeaderFields = headerFields
+        }
+
+        fun setDefaultAudioTrack(aid: Int?) = apply {
+            this.defaultAid = aid
+        }
 
         fun build() = MPVPlayer(this)
     }
@@ -247,10 +281,35 @@ class MPVPlayer(
 
         MPVLib.setOptionString("hwdec", effectiveHwDec)
 
+        // When opening local rewritten HLS/MPD playlists (file paths), FFmpeg may block network protocols
+        // for referenced segment playlists/segments unless explicitly whitelisted.
+        MPVLib.setOptionString(
+            "demuxer-lavf-o",
+            // mpv splits demuxer-lavf-o by commas into key=value pairs, so commas inside values must be escaped.
+            "protocol_whitelist=file\\,crypto\\,data\\,https\\,tls\\,tcp\\,udp\\,pipe",
+        )
+
+        httpUserAgent?.takeIf { it.isNotBlank() }?.let { ua ->
+            MPVLib.setOptionString("user-agent", ua)
+        }
+        httpReferrer?.takeIf { it.isNotBlank() }?.let { ref ->
+            MPVLib.setOptionString("referrer", ref)
+        }
+        httpHeaderFields?.takeIf { it.isNotBlank() }?.let { fields ->
+            MPVLib.setOptionString("http-header-fields", fields)
+        }
+
+        defaultAid?.let { aid ->
+            MPVLib.setOptionString("aid", aid.toString())
+        }
+
         MPVLib.setOptionString("force-window", "no")
         MPVLib.setOptionString("keep-open", "always")
         MPVLib.setOptionString("idle", "once")
         MPVLib.setOptionString("save-position-on-quit", "no")
+
+        // Prevent ytdl_hook from trying to handle local playlists.
+        MPVLib.setOptionString("ytdl", "no")
 
         MPVLib.init()
         MPVLib.addObserver(this)
@@ -576,6 +635,19 @@ class MPVPlayer(
 
     override fun setTrackSelectionParameters(parameters: TrackSelectionParameters) {
         trackSelectionParameters = parameters
+    }
+
+    fun selectTrack(type: @C.TrackType Int, formatId: String?) {
+        val prop =
+            when (type) {
+                C.TRACK_TYPE_VIDEO -> "vid"
+                C.TRACK_TYPE_AUDIO -> "aid"
+                C.TRACK_TYPE_TEXT -> "sid"
+                else -> return
+            }
+
+        val value = formatId?.toIntOrNull()?.toString() ?: "no"
+        runCatching { MPVLib.setPropertyString(prop, value) }
     }
 
     override fun getMediaMetadata(): MediaMetadata = MediaMetadata.EMPTY

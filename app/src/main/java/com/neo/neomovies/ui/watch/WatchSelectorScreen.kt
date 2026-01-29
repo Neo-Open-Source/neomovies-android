@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +26,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,13 +52,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.neo.neomovies.BuildConfig
 import com.neo.neomovies.R
 import com.neo.neomovies.torrserver.TorServerService
 import com.neo.neomovies.torrserver.TorrServerManager
 import com.neo.neomovies.torrserver.api.model.TorrentFileStat
+import com.neo.neomovies.ui.settings.SourceManager
+import com.neo.neomovies.ui.settings.SourceMode
+import com.neo.neomovies.ui.util.normalizeImageUrl
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
@@ -70,6 +82,8 @@ fun WatchSelectorScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val sourceMode = SourceManager.getMode(context)
 
     var pendingMagnet by remember { mutableStateOf<String?>(null) }
     var pendingTitle by remember { mutableStateOf<String?>(null) }
@@ -289,36 +303,153 @@ fun WatchSelectorScreen(
                 }
 
                 else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (state.isSourcesLoading) {
-                            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                        }
+                    when (sourceMode) {
+                        SourceMode.COLLAPS -> {
+                            val poster = resolveDetailsImageUrl(state.details?.backdropUrl)
+                                ?: resolveDetailsImageUrl(state.details?.posterUrl)
 
-                        if (state.torrents.isEmpty() && !state.isSourcesLoading) {
-                            Text(text = stringResource(R.string.torrents_not_found))
-                        }
+                            val seasons = state.tvSeasons.orEmpty()
+                            if (seasons.isEmpty()) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(text = stringResource(R.string.lumex_no_data))
+                                }
+                            } else {
+                                val selectedSeason = state.selectedSeasonNumber
 
-                        LazyColumn(
-                            modifier = Modifier.weight(1f, fill = true),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            items(state.torrents) { t ->
+                                if (selectedSeason == null) {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Adaptive(minSize = 140.dp),
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    ) {
+                                        items(seasons) { s ->
+                                            SeasonCard(
+                                                title = "Season ${s.number}",
+                                                posterUrl = poster,
+                                                onClick = { viewModel.selectSeason(s.number) },
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    val season = seasons.firstOrNull { it.number == selectedSeason }
+                                    val episodes = season?.episodes.orEmpty()
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                    ) {
+                                        items(episodes) { ep ->
+                                            ListItem(
+                                                headlineContent = { Text(text = "Episode ${ep.number}") },
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(14.dp))
+                                                    .clickable {
+                                                        viewModel.selectEpisode(ep.number)
+                                                        val firstVoice = ep.voiceovers.firstOrNull() ?: return@clickable
+                                                        viewModel.selectVoiceover(firstVoice.id, firstVoice.playbackUrl)
+                                                    },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        SourceMode.TORRENTS -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                if (state.isSourcesLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                                }
+
+                                if (state.torrents.isEmpty() && !state.isSourcesLoading) {
+                                    Text(text = stringResource(R.string.torrents_not_found))
+                                }
+
+                                LazyColumn(
+                                    modifier = Modifier.weight(1f, fill = true),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    items(state.torrents) { t ->
+                                        Button(
+                                            onClick = {
+                                                val magnet = t.magnet
+                                                val title = t.title.ifBlank { t.name }
+                                                pendingMagnet = magnet
+                                                pendingTitle = title
+
+                                                scope.launch {
+                                                    val downloaded = TorrServerManager.isServerDownloaded(context)
+                                                    val running = if (downloaded) TorrServerManager.isServerRunning() else false
+
+                                                    when {
+                                                        !downloaded -> {
+                                                            dialogNeedsDownload = true
+                                                            showTorrServerDialog = true
+                                                        }
+                                                        !running -> {
+                                                            dialogNeedsDownload = false
+                                                            showTorrServerDialog = true
+                                                        }
+                                                        else -> viewModel.resolveTorrent(magnet, title)
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(56.dp)
+                                                .clip(RoundedCornerShape(16.dp)),
+                                            colors = ButtonDefaults.buttonColors(),
+                                            shape = RoundedCornerShape(16.dp),
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            ) {
+                                                Text(
+                                                    text = t.quality.takeIf { it > 0 }?.let { "${it}p" }
+                                                        ?: stringResource(R.string.torrent_quality_unknown),
+                                                    fontSize = 14.sp,
+                                                )
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = t.title.ifBlank { t.name },
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        fontSize = 14.sp,
+                                                    )
+                                                    Text(
+                                                        text = stringResource(R.string.torrent_seeds_format, t.sizeName, t.sid),
+                                                        fontSize = 12.sp,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 Button(
                                     onClick = {
-                                        val magnet = t.magnet
-                                        val title = t.title.ifBlank { t.name }
+                                        val first = state.torrents.firstOrNull() ?: return@Button
+                                        val magnet = first.magnet
+                                        val title = first.title.ifBlank { first.name }
                                         pendingMagnet = magnet
                                         pendingTitle = title
-
                                         scope.launch {
                                             val downloaded = TorrServerManager.isServerDownloaded(context)
                                             val running = if (downloaded) TorrServerManager.isServerRunning() else false
-
                                             when {
                                                 !downloaded -> {
                                                     dialogNeedsDownload = true
@@ -332,72 +463,15 @@ fun WatchSelectorScreen(
                                             }
                                         }
                                     },
+                                    enabled = state.torrents.isNotEmpty(),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(56.dp)
-                                        .clip(RoundedCornerShape(16.dp)),
-                                    colors = ButtonDefaults.buttonColors(),
-                                    shape = RoundedCornerShape(16.dp),
+                                        .height(52.dp),
+                                    shape = RoundedCornerShape(14.dp),
                                 ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    ) {
-                                        Text(
-                                            text = t.quality.takeIf { it > 0 }?.let { "${it}p" }
-                                                ?: stringResource(R.string.torrent_quality_unknown),
-                                            fontSize = 14.sp,
-                                        )
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = t.title.ifBlank { t.name },
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis,
-                                                fontSize = 14.sp,
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.torrent_seeds_format, t.sizeName, t.sid),
-                                                fontSize = 12.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
-                                    }
+                                    Text(text = stringResource(R.string.action_watch), fontSize = 16.sp)
                                 }
                             }
-                        }
-
-                        Button(
-                            onClick = {
-                                val first = state.torrents.firstOrNull() ?: return@Button
-                                val magnet = first.magnet
-                                val title = first.title.ifBlank { first.name }
-                                pendingMagnet = magnet
-                                pendingTitle = title
-                                scope.launch {
-                                    val downloaded = TorrServerManager.isServerDownloaded(context)
-                                    val running = if (downloaded) TorrServerManager.isServerRunning() else false
-                                    when {
-                                        !downloaded -> {
-                                            dialogNeedsDownload = true
-                                            showTorrServerDialog = true
-                                        }
-                                        !running -> {
-                                            dialogNeedsDownload = false
-                                            showTorrServerDialog = true
-                                        }
-                                        else -> viewModel.resolveTorrent(magnet, title)
-                                    }
-                                }
-                            },
-                            enabled = state.torrents.isNotEmpty(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            shape = RoundedCornerShape(14.dp),
-                        ) {
-                            Text(text = stringResource(R.string.action_watch), fontSize = 16.sp)
                         }
                     }
                 }
@@ -480,4 +554,60 @@ private fun formatFileSize(size: Long): String {
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
     val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
     return String.format(java.util.Locale.US, "%.1f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+}
+
+private fun resolveDetailsImageUrl(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    val v = value.trim()
+    if (v.startsWith("http://") || v.startsWith("https://")) return v
+
+    val fromId = normalizeImageUrl(v)
+    if (fromId != null) return fromId
+
+    val base = BuildConfig.API_BASE_URL.trimEnd('/')
+    return when {
+        v.startsWith("/") -> base + v
+        v.startsWith("api/") || v.startsWith("api/v1/") -> "$base/$v"
+        else -> v
+    }
+}
+
+@Composable
+private fun SeasonCard(
+    title: String,
+    posterUrl: String?,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+    ) {
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(14.dp)),
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+
+        Text(
+            text = title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp, start = 4.dp, end = 4.dp),
+        )
+    }
 }

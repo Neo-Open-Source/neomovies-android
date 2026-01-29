@@ -22,6 +22,10 @@
     <string name="settings_player_mpv_experimental">MPV (Экспериментально)</string>
     <string name="settings_player_vlc">VLC</string>
 
+    <string name="settings_source">Источник</string>
+    <string name="settings_source_collaps">Collaps</string>
+    <string name="settings_source_torrents">Торренты</string>
+
     <string name="about_latest_release">Последний релиз</string>
     <string name="about_latest_release_desc">Репозиторий приложения</string>
     <string name="about_prereleases">Пререлизы</string>
@@ -113,6 +117,7 @@
     <string name="select_playback_speed">Скорость воспроизведения</string>
     <string name="select_audio_track">Выбор аудиодорожки</string>
     <string name="select_subtitle_track">Выбор субтитров</string>
+    <string name="select_video_quality">Выбор качества</string>
     <string name="none">Нет</string>
 
     <string name="player_trickplay">Превью при перемотке</string>

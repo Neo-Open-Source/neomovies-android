@@ -166,6 +166,10 @@ class PlayerActivity : BasePlayerActivity() {
         val audioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_audio_track)
         val subtitleButton = binding.playerView.findViewById<ImageButton>(R.id.btn_subtitle)
         val speedButton = binding.playerView.findViewById<ImageButton>(R.id.btn_speed)
+        val qualityButton = binding.playerView.findViewById<ImageButton>(R.id.btn_quality)
+
+        val useCollapsHeaders = intent.getBooleanExtra(EXTRA_USE_COLLAPS_HEADERS, false)
+        qualityButton.isVisible = useCollapsHeaders
 
         audioButton.isEnabled = false
         audioButton.imageAlpha = 75
@@ -174,6 +178,9 @@ class PlayerActivity : BasePlayerActivity() {
 
         speedButton.isEnabled = false
         speedButton.imageAlpha = 75
+
+        qualityButton.isEnabled = false
+        qualityButton.imageAlpha = 75
 
         audioButton.setOnClickListener {
             TrackSelectionDialogFragment
@@ -187,6 +194,12 @@ class PlayerActivity : BasePlayerActivity() {
                 .show(supportFragmentManager, "trackselectiondialog")
         }
 
+        qualityButton.setOnClickListener {
+            TrackSelectionDialogFragment
+                .newInstance(C.TRACK_TYPE_VIDEO)
+                .show(supportFragmentManager, "trackselectiondialog")
+        }
+
         speedButton.setOnClickListener {
             SpeedSelectionDialogFragment
                 .newInstance()
@@ -194,9 +207,11 @@ class PlayerActivity : BasePlayerActivity() {
         }
 
         playPauseButton.setOnClickListener {
-            if (viewModel.player.isPlaying) {
+            if (viewModel.player.playWhenReady) {
+                viewModel.playWhenReady = false
                 viewModel.player.pause()
             } else {
+                viewModel.playWhenReady = true
                 viewModel.player.play()
             }
         }
@@ -218,6 +233,10 @@ class PlayerActivity : BasePlayerActivity() {
                             subtitleButton.imageAlpha = 255
                             speedButton.isEnabled = true
                             speedButton.imageAlpha = 255
+                            if (useCollapsHeaders) {
+                                qualityButton.isEnabled = true
+                                qualityButton.imageAlpha = 255
+                            }
                         }
                     }
                 }
@@ -227,18 +246,35 @@ class PlayerActivity : BasePlayerActivity() {
                         when (event) {
                             is PlayerEvents.NavigateBack -> finishPlayback()
                             is PlayerEvents.IsPlayingChanged -> {
+                                val shouldShowPause = viewModel.player.playWhenReady
                                 playPauseButton.setImageResource(
-                                    if (event.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+                                    if (shouldShowPause) R.drawable.ic_pause else R.drawable.ic_play
                                 )
 
-                                if (event.isPlaying) {
+                                if (shouldShowPause) {
                                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                                 } else {
                                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                                 }
 
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    runCatching { setPictureInPictureParams(pipParams(event.isPlaying)) }
+                                    runCatching { setPictureInPictureParams(pipParams(shouldShowPause)) }
+                                }
+                            }
+
+                            is PlayerEvents.PlayWhenReadyChanged -> {
+                                playPauseButton.setImageResource(
+                                    if (event.playWhenReady) R.drawable.ic_pause else R.drawable.ic_play
+                                )
+
+                                if (event.playWhenReady) {
+                                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                                } else {
+                                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                                }
+
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    runCatching { setPictureInPictureParams(pipParams(event.playWhenReady)) }
                                 }
                             }
                         }
@@ -427,6 +463,7 @@ class PlayerActivity : BasePlayerActivity() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_START_FROM_BEGINNING = "startFromBeginning"
         const val EXTRA_USE_EXO = "useExo"
+        const val EXTRA_USE_COLLAPS_HEADERS = "useCollapsHeaders"
 
         fun intent(context: android.content.Context, url: String, title: String? = null, startFromBeginning: Boolean = false): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
@@ -434,6 +471,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, false)
+                putExtra(EXTRA_USE_COLLAPS_HEADERS, false)
             }
         }
 
@@ -443,6 +481,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, true)
+                putExtra(EXTRA_USE_COLLAPS_HEADERS, false)
             }
         }
 
@@ -453,6 +492,7 @@ class PlayerActivity : BasePlayerActivity() {
             startIndex: Int,
             title: String? = null,
             startFromBeginning: Boolean = false,
+            useCollapsHeaders: Boolean = false,
         ): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
                 putExtra(EXTRA_URL, urls.firstOrNull().orEmpty())
@@ -462,6 +502,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, false)
+                putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
             }
         }
 
@@ -472,6 +513,7 @@ class PlayerActivity : BasePlayerActivity() {
             startIndex: Int,
             title: String? = null,
             startFromBeginning: Boolean = false,
+            useCollapsHeaders: Boolean = false,
         ): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
                 putExtra(EXTRA_URL, urls.firstOrNull().orEmpty())
@@ -481,6 +523,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, true)
+                putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
             }
         }
     }

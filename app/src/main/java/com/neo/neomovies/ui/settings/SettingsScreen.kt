@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,10 +28,18 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenLanguage: () -> Unit,
     onOpenTorrServer: () -> Unit,
+    onOpenSource: () -> Unit,
     onOpenPlayer: () -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sourceLabel =
+        when (SourceManager.getMode(context)) {
+            SourceMode.COLLAPS -> stringResource(R.string.settings_source_collaps)
+            SourceMode.TORRENTS -> stringResource(R.string.settings_source_torrents)
+        }
+
     val engineLabel =
-        when (PlayerEngineManager.getMode(androidx.compose.ui.platform.LocalContext.current)) {
+        when (PlayerEngineManager.getMode(context)) {
             PlayerEngineMode.EXO -> stringResource(R.string.settings_player_exoplayer)
             PlayerEngineMode.MPV -> stringResource(R.string.settings_player_mpv_experimental)
         }
@@ -63,6 +72,13 @@ fun SettingsScreen(
                 description = null,
                 icon = Icons.Outlined.CloudDownload,
                 onClick = onOpenTorrServer,
+            )
+
+            PreferenceItem(
+                title = stringResource(R.string.settings_source),
+                description = sourceLabel,
+                icon = Icons.Outlined.Tune,
+                onClick = onOpenSource,
             )
 
             PreferenceItem(

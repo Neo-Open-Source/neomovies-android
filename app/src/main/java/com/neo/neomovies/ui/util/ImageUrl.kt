@@ -8,6 +8,7 @@ fun normalizeImageUrl(path: String?): String? {
     val base = BuildConfig.API_BASE_URL.trimEnd('/')
 
     val value = path.trim()
+    if (value.startsWith("http://") || value.startsWith("https://")) return value
     val id = when {
         value.all { it.isDigit() } -> value
         value.startsWith("kp_") && value.drop(3).all { it.isDigit() } -> value.drop(3)

@@ -33,7 +33,8 @@ class TrackSelectionDialogFragment : DialogFragment() {
             when (type) {
                 C.TRACK_TYPE_AUDIO -> com.neo.neomovies.R.string.select_audio_track
                 C.TRACK_TYPE_TEXT -> com.neo.neomovies.R.string.select_subtitle_track
-                else -> error("TrackType must be AUDIO or TEXT")
+                C.TRACK_TYPE_VIDEO -> com.neo.neomovies.R.string.select_video_quality
+                else -> error("TrackType must be AUDIO, TEXT or VIDEO")
             }
 
         val tracks = viewModel.getSelectableTracks(type)

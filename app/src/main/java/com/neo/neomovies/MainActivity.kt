@@ -209,6 +209,7 @@ fun NeoMoviesApp(
                         onBack = { navController.popBackStack() },
                         onOpenLanguage = { navController.navigate(NavRoute.Language.route) },
                         onOpenTorrServer = { navController.navigate(NavRoute.TorrServer.route) },
+                        onOpenSource = { navController.navigate(NavRoute.SourceSettings.route) },
                         onOpenPlayer = { navController.navigate(NavRoute.PlayerSettings.route) },
                     )
                 }
@@ -219,6 +220,12 @@ fun NeoMoviesApp(
 
                 animatedComposable(NavRoute.Language.route) {
                     LanguageScreen(onBack = { navController.popBackStack() })
+                }
+
+                animatedComposable(NavRoute.SourceSettings.route) {
+                    com.neo.neomovies.ui.settings.SourceSettingsScreen(
+                        onBack = { navController.popBackStack() },
+                    )
                 }
 
                 animatedComposable(NavRoute.PlayerSettings.route) {
@@ -272,6 +279,9 @@ fun NeoMoviesApp(
                         onBack = { navController.popBackStack() },
                         onWatch = { urls, names, startIndex, title ->
                             val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
+                            val useCollapsHeaders =
+                                com.neo.neomovies.ui.settings.SourceManager.getMode(context) ==
+                                    com.neo.neomovies.ui.settings.SourceMode.COLLAPS
                             context.startActivity(
                                 when (mode) {
                                     com.neo.neomovies.ui.settings.PlayerEngineMode.EXO ->
@@ -281,6 +291,7 @@ fun NeoMoviesApp(
                                             names = names,
                                             startIndex = startIndex,
                                             title = title,
+                                            useCollapsHeaders = useCollapsHeaders,
                                         )
                                     com.neo.neomovies.ui.settings.PlayerEngineMode.MPV ->
                                         com.neo.player.PlayerActivity.intent(
@@ -289,6 +300,7 @@ fun NeoMoviesApp(
                                             names = names,
                                             startIndex = startIndex,
                                             title = title,
+                                            useCollapsHeaders = useCollapsHeaders,
                                         )
                                 },
                             )

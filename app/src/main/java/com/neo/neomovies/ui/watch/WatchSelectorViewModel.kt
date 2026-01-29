@@ -2,7 +2,9 @@ package com.neo.neomovies.ui.watch
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import com.neo.neomovies.data.MoviesRepository
+import com.neo.neomovies.data.collaps.CollapsRepository
 import com.neo.neomovies.data.network.dto.MediaDetailsDto
 import com.neo.neomovies.data.torrents.JacredTorrent
 import com.neo.neomovies.data.torrents.JacredTorrentsRepository
@@ -10,6 +12,10 @@ import com.neo.neomovies.torrserver.TorrServerManager
 import com.neo.neomovies.torrserver.api.SimpleStreamingApi
 import com.neo.neomovies.torrserver.api.model.TorrentFileStat
 import android.util.Log
+import com.neo.neomovies.ui.settings.SourceManager
+import com.neo.neomovies.ui.settings.SourceMode
+import com.neo.neomovies.ui.settings.PlayerEngineManager
+import com.neo.neomovies.ui.settings.PlayerEngineMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -70,6 +76,8 @@ data class Movie(
 class WatchSelectorViewModel(
     private val moviesRepository: MoviesRepository,
     private val torrentsRepository: JacredTorrentsRepository,
+    private val collapsRepository: CollapsRepository,
+    private val context: Context,
     private val sourceId: String,
 ) : ViewModel() {
     private val _state = MutableStateFlow(WatchSelectorUiState())
@@ -77,6 +85,113 @@ class WatchSelectorViewModel(
 
     init {
         load()
+    }
+
+    private fun loadCollaps(kpId: Int) {
+        viewModelScope.launch {
+            runCatching {
+                collapsRepository.getSeasonsByKpId(kpId)
+            }.onSuccess { seasons ->
+                if (seasons.isEmpty()) {
+                    runCatching { collapsRepository.getMovieByKpId(kpId) }
+                        .onSuccess { movie ->
+                            val mpd = movie?.mpdUrl
+                            if (movie != null && mpd != null) {
+                                _state.update { it.copy(isPlaybackResolving = true, error = null) }
+                                viewModelScope.launch {
+                                    try {
+                                        val preferHlsForMpv =
+                                            PlayerEngineManager.getMode(context) == PlayerEngineMode.MPV
+
+                                        val shouldUseHls =
+                                            preferHlsForMpv ||
+                                                runCatching { collapsRepository.dashContainsAv1(mpd) }.getOrDefault(false)
+
+                                        val rewritten =
+                                            if (shouldUseHls && !movie.hlsUrl.isNullOrBlank()) {
+                                                if (preferHlsForMpv) {
+                                                    movie.hlsUrl
+                                                } else {
+                                                    collapsRepository.buildRewrittenHlsUri(kpId, 0, 0, movie.hlsUrl, movie.voices, movie.subtitles)
+                                                }
+                                            } else {
+                                                collapsRepository.buildRewrittenMpdUri(kpId, 0, 0, mpd, movie.voices, movie.subtitles)
+                                            }
+                                        _state.update {
+                                            it.copy(
+                                                isSourcesLoading = false,
+                                                isPlaybackResolving = false,
+                                                movie = Movie(title = "", voiceovers = emptyList()),
+                                                selectedPlaybackUrl = rewritten,
+                                            )
+                                        }
+                                    } catch (t: Throwable) {
+                                        _state.update { it.copy(isSourcesLoading = false, isPlaybackResolving = false, error = t.message ?: "") }
+                                    }
+                                }
+                            } else {
+                                _state.update { it.copy(isSourcesLoading = false) }
+                            }
+                        }
+                        .onFailure { t ->
+                            _state.update { it.copy(isSourcesLoading = false, error = t.message ?: "") }
+                        }
+                    return@onSuccess
+                }
+
+                val mapped = seasons.map { s ->
+                    Season(
+                        number = s.season,
+                        title = "${s.season}",
+                        episodes = s.episodes.map { e ->
+                            val voiceovers =
+                                if (e.mpdUrl != null && e.voices.isNotEmpty()) {
+                                    e.voices.mapIndexed { idx, name ->
+                                        Voiceover(
+                                            id = "collaps:${s.season}:${e.episode}:$idx",
+                                            title = name,
+                                            playbackUrl = e.mpdUrl,
+                                        )
+                                    }
+                                } else if (e.mpdUrl != null) {
+                                    listOf(
+                                        Voiceover(
+                                            id = "collaps:${s.season}:${e.episode}:0",
+                                            title = "Collaps",
+                                            playbackUrl = e.mpdUrl,
+                                        )
+                                    )
+                                } else if (e.hlsUrl != null) {
+                                    listOf(
+                                        Voiceover(
+                                            id = "collaps:${s.season}:${e.episode}:0",
+                                            title = "Collaps",
+                                            playbackUrl = e.hlsUrl,
+                                        )
+                                    )
+                                } else {
+                                    emptyList()
+                                }
+
+                            Episode(
+                                number = e.episode,
+                                title = "${e.episode}",
+                                voiceovers = voiceovers,
+                            )
+                        },
+                    )
+                }
+
+                _state.update {
+                    it.copy(
+                        tvSeasons = mapped,
+                        isSourcesLoading = false,
+                    )
+                }
+            }.onFailure { t ->
+                _state.update { state -> state.copy(isSourcesLoading = false, error = t.message ?: "") }
+            }
+        }
     }
 
     fun load() {
@@ -106,12 +221,23 @@ class WatchSelectorViewModel(
                     )
                 }
 
-                if (kpId != null) {
-                    loadTorrentsByQuery("kp$kpId", fallbackTitle = titleForSearch, year = year)
-                } else if (titleForSearch != null) {
-                    loadTorrentsByQuery(titleForSearch, fallbackTitle = null, year = year)
-                } else {
-                    _state.update { it.copy(isSourcesLoading = false) }
+                when (SourceManager.getMode(context)) {
+                    SourceMode.COLLAPS -> {
+                        if (kpId != null) {
+                            loadCollaps(kpId)
+                        } else {
+                            _state.update { it.copy(isSourcesLoading = false) }
+                        }
+                    }
+                    SourceMode.TORRENTS -> {
+                        if (kpId != null) {
+                            loadTorrentsByQuery("kp$kpId", fallbackTitle = titleForSearch, year = year)
+                        } else if (titleForSearch != null) {
+                            loadTorrentsByQuery(titleForSearch, fallbackTitle = null, year = year)
+                        } else {
+                            _state.update { it.copy(isSourcesLoading = false) }
+                        }
+                    }
                 }
             } catch (t: Throwable) {
                 _state.update { it.copy(isLoading = false, isSourcesLoading = false, error = t.message ?: "") }
@@ -163,6 +289,82 @@ class WatchSelectorViewModel(
     }
 
     fun selectVoiceover(voiceoverId: String, playbackUrl: String) {
+        val kpId = _state.value.kinopoiskId
+        val s = _state.value.selectedSeasonNumber
+        val e = _state.value.selectedEpisodeNumber
+
+        // If this is a Collaps DASH voice, rewrite mpd and play via content:// so external players can also open it.
+        if (kpId != null && s != null && e != null && voiceoverId.startsWith("collaps:")) {
+            _state.update { it.copy(isPlaybackResolving = true, error = null) }
+            viewModelScope.launch {
+                try {
+                    val seasons = collapsRepository.getSeasonsByKpId(kpId)
+                    val ep = seasons.firstOrNull { it.season == s }?.episodes?.firstOrNull { it.episode == e }
+                    if (ep == null) {
+                        _state.update { it.copy(isPlaybackResolving = false, error = "No episode") }
+                        return@launch
+                    }
+
+                    val mpd = ep.mpdUrl
+                    if (mpd != null) {
+                        val preferHlsForMpv =
+                            PlayerEngineManager.getMode(context) == PlayerEngineMode.MPV
+
+                        val shouldUseHls =
+                            preferHlsForMpv ||
+                                runCatching { collapsRepository.dashContainsAv1(mpd) }.getOrDefault(false)
+
+                        val rewritten =
+                            if (shouldUseHls && !ep.hlsUrl.isNullOrBlank()) {
+                                if (preferHlsForMpv) {
+                                    ep.hlsUrl
+                                } else {
+                                    collapsRepository.buildRewrittenHlsUri(kpId, s, e, ep.hlsUrl, ep.voices, ep.subtitles)
+                                }
+                            } else {
+                                collapsRepository.buildRewrittenMpdUri(kpId, s, e, mpd, ep.voices, ep.subtitles)
+                            }
+
+                        _state.update {
+                            it.copy(
+                                isPlaybackResolving = false,
+                                selectedVoiceoverId = voiceoverId,
+                                selectedPlaybackUrl = rewritten,
+                                selectedQuality = null,
+                                resolvedMaxQuality = null,
+                            )
+                        }
+                    } else {
+                        if (!ep.hlsUrl.isNullOrBlank()) {
+                            val preferHlsForMpv =
+                                PlayerEngineManager.getMode(context) == PlayerEngineMode.MPV
+
+                            val rewritten =
+                                if (preferHlsForMpv) {
+                                    ep.hlsUrl
+                                } else {
+                                    collapsRepository.buildRewrittenHlsUri(kpId, s, e, ep.hlsUrl, ep.voices, ep.subtitles)
+                                }
+                            _state.update {
+                                it.copy(
+                                    isPlaybackResolving = false,
+                                    selectedVoiceoverId = voiceoverId,
+                                    selectedPlaybackUrl = rewritten,
+                                    selectedQuality = null,
+                                    resolvedMaxQuality = null,
+                                )
+                            }
+                        } else {
+                            _state.update { it.copy(isPlaybackResolving = false, error = "No mpd/hls url") }
+                        }
+                    }
+                } catch (t: Throwable) {
+                    _state.update { it.copy(isPlaybackResolving = false, error = t.message ?: "") }
+                }
+            }
+            return
+        }
+
         _state.update {
             it.copy(
                 selectedVoiceoverId = voiceoverId,

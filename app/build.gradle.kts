@@ -168,7 +168,16 @@ dependencies {
     implementation("org.jsoup:jsoup:1.17.2")
     implementation(libs.libmpv)
 
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    implementation(
+        files(
+            "libs/lib-decoder-ffmpeg-release.aar",
+            "libs/lib-decoder-vp9-release.aar",
+            "libs/lib-decoder-opus-release.aar",
+            "libs/lib-decoder-flac-release.aar",
+            "libs/lib-decoder-iamf-release.aar",
+            "libs/lib-decoder-mpegh-release.aar",
+        )
+    )
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
