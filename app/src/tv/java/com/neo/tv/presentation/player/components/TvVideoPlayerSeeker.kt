@@ -1,0 +1,55 @@
+package com.neo.tv.presentation.player.components
+
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.media3.common.Player
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
+
+@Composable
+fun TvVideoPlayerSeeker(
+    player: Player,
+    modifier: Modifier = Modifier,
+    onSeek: (Float) -> Unit = { player.seekTo(player.duration.times(it).toLong()) },
+    onShowControls: () -> Unit = {},
+) {
+    val contentDuration = player.contentDuration.milliseconds
+    var currentPositionMs by remember(player) { mutableLongStateOf(0L) }
+    val currentPosition = currentPositionMs.milliseconds
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(300)
+            currentPositionMs = player.currentPosition
+        }
+    }
+
+    val contentProgressString = currentPosition.toComponents { h, m, s, _ ->
+        if (h > 0) "$h:${m.padStartWith0()}:${s.padStartWith0()}" else "${m.padStartWith0()}:${s.padStartWith0()}"
+    }
+    val contentDurationString = contentDuration.toComponents { h, m, s, _ ->
+        if (h > 0) "$h:${m.padStartWith0()}:${s.padStartWith0()}" else "${m.padStartWith0()}:${s.padStartWith0()}"
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TvVideoPlayerControllerText(text = contentProgressString)
+        TvVideoPlayerIndicator(
+            progress = (currentPosition / contentDuration).toFloat(),
+            onSeek = onSeek,
+            onShowControls = onShowControls,
+        )
+        TvVideoPlayerControllerText(text = contentDurationString)
+    }
+}
+
+private fun Number.padStartWith0() = this.toString().padStart(2, '0')

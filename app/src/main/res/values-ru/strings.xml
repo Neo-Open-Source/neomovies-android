@@ -12,11 +12,11 @@
     <string name="settings_language">Язык</string>
     <string name="settings_language_system">Системный</string>
     <string name="settings_language_ru">Русский</string>
-    <string name="settings_language_en">English</string>
+    <string name="settings_language_en">Английский</string>
 
     <string name="settings_torrserver">TorrServer</string>
 
-    <string name="settings_player">Player</string>
+    <string name="settings_player">Плеер</string>
     <string name="settings_player_exoplayer">ExoPlayer</string>
     <string name="settings_player_mpv">MPV</string>
     <string name="settings_player_mpv_experimental">MPV (Экспериментально)</string>
@@ -36,6 +36,8 @@
     <string name="about_credits_desc">Спасибо нашим поддерживающим</string>
     <string name="about_changes">Изменения</string>
     <string name="about_changes_desc">Что нового в этой версии</string>
+    <string name="about_settings">Настройки</string>
+    <string name="about_settings_desc">Параметры приложения</string>
     <string name="about_version">Версия</string>
 
     <string name="changes_title">Изменения</string>
@@ -69,6 +71,7 @@
     <string name="action_search">Поиск</string>
     <string name="action_more">Больше</string>
     <string name="action_watch">Смотреть</string>
+    <string name="action_selected">✓</string>
 
     <string name="lumex_select_season">Выберите сезон</string>
     <string name="lumex_select_episode">Выберите серию</string>

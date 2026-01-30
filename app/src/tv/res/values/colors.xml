@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="tv_background">#1A1C1E</color>
+    <color name="tv_primary">#A8C8FF</color>
+    <color name="tv_onPrimary">#003062</color>
+    <color name="tv_primaryContainer">#00468A</color>
+    <color name="tv_onPrimaryContainer">#D6E3FF</color>
+    <color name="tv_secondary">#BDC7DC</color>
+    <color name="tv_onSecondary">#273141</color>
+    <color name="tv_secondaryContainer">#3E4758</color>
+    <color name="tv_onSecondaryContainer">#D9E3F8</color>
+    <color name="tv_tertiary">#DCBCE1</color>
+    <color name="tv_onTertiary">#3E2845</color>
+    <color name="tv_tertiaryContainer">#563E5C</color>
+    <color name="tv_onTertiaryContainer">#F9D8FE</color>
+    <color name="tv_surface">#1A1C1E</color>
+    <color name="tv_onSurface">#E3E2E6</color>
+    <color name="tv_surfaceVariant">#43474E</color>
+    <color name="tv_onSurfaceVariant">#C4C6CF</color>
+    <color name="tv_error">#FFB4AB</color>
+    <color name="tv_onError">#690005</color>
+    <color name="tv_errorContainer">#93000A</color>
+    <color name="tv_onErrorContainer">#FFB4AB</color>
+    <color name="tv_border">#8E9099</color>
+</resources>

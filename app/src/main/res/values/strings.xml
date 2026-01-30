@@ -92,6 +92,8 @@
     <string name="about_credits_desc">Thanks to our supporters</string>
     <string name="about_changes">Changes</string>
     <string name="about_changes_desc">What’s new in this version</string>
+    <string name="about_settings">Settings</string>
+    <string name="about_settings_desc">Configure the app</string>
     <string name="about_version">Version</string>
 
     <string name="changes_title">Changes</string>
@@ -125,6 +127,7 @@
     <string name="action_search">Search</string>
     <string name="action_more">More</string>
     <string name="action_watch">Watch</string>
+    <string name="action_selected">✓</string>
 
     <string name="lumex_select_season">Select season</string>
     <string name="lumex_select_episode">Select episode</string>
