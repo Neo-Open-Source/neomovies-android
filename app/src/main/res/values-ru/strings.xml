@@ -45,6 +45,7 @@
 
     <string-array name="changes_history">
         <item>0.1.0-pre1||- Первый пререлиз\n- Добавлены плееры: ExoPlayer и libMPV\n- Добавлен Torrserver и мелкие исправления.</item>
+       <item>0.1.0-pre2||- Добавлен плеер Collaps и версия для телевизоров.</item>
     </string-array>
 
     <string name="credits_loading">Загрузка…</string>
