@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import androidx.lifecycle.SavedStateViewModelFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,6 +29,7 @@ import com.neo.tv.presentation.player.components.rememberTvVideoPlayerPulseState
 import com.neo.tv.presentation.player.components.rememberTvVideoPlayerState
 
 @Composable
+@UnstableApi
 fun TvVideoPlayerScreen(
     onBack: () -> Unit,
 ) {
@@ -61,6 +63,17 @@ fun TvVideoPlayerScreen(
 
     BackHandler(onBack = onBack)
 
+    // Инициализация плеера ПЕРЕД рендерингом UI - исправление race condition
+    LaunchedEffect(Unit) {
+        viewModel.initializePlayer(
+            urls = urls,
+            names = args.names,
+            startIndex = args.startIndex,
+            title = args.title,
+            startFromBeginning = false,
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize().focusable()) {
         AndroidView(
             factory = { ctx ->
@@ -70,11 +83,16 @@ fun TvVideoPlayerScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     useController = false
+                    // TV специфичные настройки для правильной инициализации Surface
+                    shutterBackgroundColor = android.graphics.Color.BLACK
                 }
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
-                view.player = viewModel.player
+                // Проверка на null перед присваиванием плеера
+                if (viewModel.player != null) {
+                    view.player = viewModel.player
+                }
             }
         )
 
@@ -95,13 +113,6 @@ fun TvVideoPlayerScreen(
     }
 
     DisposableEffect(Unit) {
-        viewModel.initializePlayer(
-            urls = urls,
-            names = args.names,
-            startIndex = args.startIndex,
-            title = args.title,
-            startFromBeginning = false,
-        )
         onDispose {
             TvPlayerArgs.clear()
         }
