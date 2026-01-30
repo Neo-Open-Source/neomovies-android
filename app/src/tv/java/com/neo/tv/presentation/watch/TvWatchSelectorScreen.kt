@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
@@ -37,7 +38,7 @@ fun TvWatchSelectorScreen(
 ) {
     val viewModel: WatchSelectorViewModel = koinViewModel(parameters = { parametersOf(sourceId) })
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val sourceMode = remember { SourceManager.getMode(context) }
 
     LaunchedEffect(
