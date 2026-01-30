@@ -1,5 +1,6 @@
 package com.neo.tv.presentation
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -10,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.neo.neomovies.ui.about.CreditsScreen
 import com.neo.neomovies.ui.navigation.CategoryType
+import com.neo.player.PlayerActivity
 import com.neo.tv.presentation.about.TvAboutScreen
 import com.neo.tv.presentation.dashboard.TvDashboardScreen
 import com.neo.tv.presentation.details.TvDetailsScreen
@@ -90,13 +92,16 @@ fun TvApp(
                 sourceId = sourceId,
                 onBack = { navController.popBackStack() },
                 onWatch = { urls, names, startIndex, title ->
-                    val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
-                    val useCollapsHeaders =
-                        com.neo.neomovies.ui.settings.SourceManager.getMode(context) ==
-                            com.neo.neomovies.ui.settings.SourceMode.COLLAPS
-                    val useExo = mode == com.neo.neomovies.ui.settings.PlayerEngineMode.EXO
-                    TvPlayerArgs.set(urls, names, startIndex, title, useExo, useCollapsHeaders)
-                    navController.navigate(TvScreens.Player.route)
+                    val intent = Intent(context, PlayerActivity::class.java).apply {
+                        putStringArrayListExtra(PlayerActivity.EXTRA_URLS, urls)
+                        putStringArrayListExtra(PlayerActivity.EXTRA_NAMES, names)
+                        putExtra(PlayerActivity.EXTRA_TITLE, title)
+                        putExtra(PlayerActivity.EXTRA_START_INDEX, startIndex)
+                        putExtra(PlayerActivity.EXTRA_USE_EXO, true)
+                    }
+                    context.startActivity(intent)
+                    // Возвращаемся назад
+                    navController.popBackStack()
                 },
             )
         }
