@@ -23,6 +23,7 @@ import com.neo.neomovies.torrserver.TorrServerManager
 import com.neo.neomovies.torrserver.TorServerService
 import com.neo.tv.presentation.common.TvActionButton
 import com.neo.tv.presentation.common.TvScreenScaffold
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -61,7 +62,16 @@ fun TvTorrServerSettingsScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val downloaded = TorrServerManager.isServerDownloaded(context)
+            val installedVersion = TorrServerManager.getInstalledVersion(context)
+            val showDownloadOrUpdate = !downloaded || (installedVersion != null && installedVersion != version) || (installedVersion == null && downloaded)
+
             Text(text = stringResource(R.string.torrserver_status_label, status))
+            
+            if (installedVersion != null) {
+                Text(text = stringResource(R.string.torrserver_installed_version_label, installedVersion))
+            }
+            
             Text(text = stringResource(R.string.torrserver_url_label, TorrServerManager.baseUrl()))
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -80,12 +90,52 @@ fun TvTorrServerSettingsScreen(
                 )
             }
 
+            if (showDownloadOrUpdate) {
+                TvActionButton(
+                    text = if (!downloaded) {
+                        stringResource(R.string.torrserver_download)
+                    } else {
+                        stringResource(R.string.torrserver_update)
+                    },
+                    onClick = {
+                        scope.launch {
+                            isBusy = true
+                            TorServerService.download(context, version)
+                            repeat(120) {
+                                delay(1000)
+                                refreshStatus()
+                                if (TorrServerManager.getInstalledVersion(context) == version && TorrServerManager.isServerDownloaded(context)) {
+                                    return@repeat
+                                }
+                            }
+                            isBusy = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             TvActionButton(
                 text = stringResource(R.string.torrserver_start),
                 onClick = {
                     scope.launch {
                         isBusy = true
                         TorServerService.start(context)
+                        delay(1200)
+                        refreshStatus()
+                        isBusy = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            TvActionButton(
+                text = stringResource(R.string.torrserver_stop),
+                onClick = {
+                    scope.launch {
+                        isBusy = true
+                        TorServerService.stop(context)
+                        delay(600)
                         refreshStatus()
                         isBusy = false
                     }
