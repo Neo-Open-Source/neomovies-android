@@ -63,7 +63,7 @@ fun TvVideoPlayerScreen(
 
     BackHandler(onBack = onBack)
 
-    // Инициализация плеера ПЕРЕД рендерингом UI - исправление race condition
+    // Инициализация плеера ПЕРЕД рендерингом UI
     LaunchedEffect(Unit) {
         viewModel.initializePlayer(
             urls = urls,
@@ -83,13 +83,11 @@ fun TvVideoPlayerScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     useController = false
-                    // TV специфичные настройки для правильной инициализации Surface
-                    shutterBackgroundColor = android.graphics.Color.BLACK
+                    setShutterBackgroundColor(android.graphics.Color.BLACK)
                 }
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
-                // Проверка на null перед присваиванием плеера
                 if (viewModel.player != null) {
                     view.player = viewModel.player
                 }
