@@ -16,11 +16,8 @@ android {
 
         val tvSourceSetNames = listOf(
             "tv",
-            "tvRemote",
             "tvRelease",
             "tvPrerelease",
-            "tvRemoteRelease",
-            "tvRemotePrerelease",
         )
 
         tvSourceSetNames.forEach { name ->
@@ -57,7 +54,14 @@ android {
             val major = parts.getOrNull(0)?.toIntOrNull() ?: 0
             val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
             val patch = parts.getOrNull(2)?.toIntOrNull() ?: 0
-            return (major * 10000) + (minor * 100) + patch
+            val baseCode = (major * 1_000_000) + (minor * 10_000) + (patch * 100)
+            val preNumber = Regex("pre(\\d+)", RegexOption.IGNORE_CASE)
+                .find(versionName)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.toIntOrNull()
+                ?: 0
+            return baseCode + preNumber
         }
 
         val envVersion = parseVersionName(System.getenv("APP_VERSION"))
@@ -137,15 +141,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
 
-        create("tvRemote") {
-            initWith(getByName("tv"))
-            matchingFallbacks += listOf("tv", "debug")
-            isDebuggable = true
-            buildConfigField("boolean", "PRE_RELEASE", "false")
-            buildConfigField("boolean", "TV_MODE", "true")
-            buildConfigField("boolean", "TV_REMOTE_OVERLAY", "true")
-            signingConfig = signingConfigs.getByName("debug")
-        }
 
         create("tvRelease") {
             initWith(getByName("release"))
@@ -161,19 +156,6 @@ android {
             buildConfigField("boolean", "TV_REMOTE_OVERLAY", "false")
         }
 
-        create("tvRemoteRelease") {
-            initWith(getByName("tvRelease"))
-            matchingFallbacks += listOf("tvRelease", "release")
-            buildConfigField("boolean", "TV_MODE", "true")
-            buildConfigField("boolean", "TV_REMOTE_OVERLAY", "true")
-        }
-
-        create("tvRemotePrerelease") {
-            initWith(getByName("tvPrerelease"))
-            matchingFallbacks += listOf("tvPrerelease", "prerelease", "release")
-            buildConfigField("boolean", "TV_MODE", "true")
-            buildConfigField("boolean", "TV_REMOTE_OVERLAY", "true")
-        }
     }
     splits {
         abi {
@@ -241,11 +223,8 @@ dependencies {
     implementation(libs.libmpv)
 
     add("tvImplementation", libs.androidx.tv.material)
-    add("tvRemoteImplementation", libs.androidx.tv.material)
     add("tvReleaseImplementation", libs.androidx.tv.material)
     add("tvPrereleaseImplementation", libs.androidx.tv.material)
-    add("tvRemoteReleaseImplementation", libs.androidx.tv.material)
-    add("tvRemotePrereleaseImplementation", libs.androidx.tv.material)
 
     implementation(
         files(

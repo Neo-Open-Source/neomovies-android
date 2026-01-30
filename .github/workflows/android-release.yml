@@ -74,33 +74,42 @@ jobs:
           if [[ "$IS_PRERELEASE" == "true" ]]; then
             VARIANT=prerelease
             TASK=assemblePrerelease
+            TV_VARIANT=tvPrerelease
+            TV_TASK=assembleTvPrerelease
           else
             VARIANT=release
             TASK=assembleRelease
+            TV_VARIANT=tvRelease
+            TV_TASK=assembleTvRelease
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
           echo "variant=$VARIANT" >> $GITHUB_OUTPUT
           echo "task=$TASK" >> $GITHUB_OUTPUT
+          echo "tv_variant=$TV_VARIANT" >> $GITHUB_OUTPUT
+          echo "tv_task=$TV_TASK" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "upload_to_release=$UPLOAD_TO_RELEASE" >> $GITHUB_OUTPUT
 
-      - name: Build APK
+      - name: Build APKs
         env:
           CI: 'true'
           APP_VERSION: ${{ steps.meta.outputs.version }}
           NEO_ID_API_KEY: ${{ secrets.NEO_ID_API_KEY }}
-        run: ./gradlew :app:${{ steps.meta.outputs.task }} --build-cache --no-daemon
+        run: ./gradlew :app:${{ steps.meta.outputs.task }} :app:${{ steps.meta.outputs.tv_task }} --build-cache --no-daemon
 
-      - name: Locate APK
+      - name: Locate APKs
         id: apk
         shell: bash
         run: |
           set -e
           APK_DIR="app/build/outputs/apk/${{ steps.meta.outputs.variant }}"
+          TV_APK_DIR="app/build/outputs/apk/${{ steps.meta.outputs.tv_variant }}"
           echo "dir=$APK_DIR" >> $GITHUB_OUTPUT
+          echo "tv_dir=$TV_APK_DIR" >> $GITHUB_OUTPUT
           echo "count=$(ls -1 $APK_DIR/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
+          echo "tv_count=$(ls -1 $TV_APK_DIR/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
 
       - name: Rename APKs
         id: renamed
@@ -108,10 +117,14 @@ jobs:
         run: |
           set -e
           IN_DIR="${{ steps.apk.outputs.dir }}"
+          TV_IN_DIR="${{ steps.apk.outputs.tv_dir }}"
           OUT_DIR="$IN_DIR/renamed"
+          TV_OUT_DIR="$TV_IN_DIR/renamed"
           mkdir -p "$OUT_DIR"
+          mkdir -p "$TV_OUT_DIR"
 
           VARIANT="${{ steps.meta.outputs.variant }}"
+          TV_VARIANT="${{ steps.meta.outputs.tv_variant }}"
           VERSION="${{ steps.meta.outputs.version }}"
 
           for f in "$IN_DIR"/*.apk; do
@@ -128,13 +141,34 @@ jobs:
             cp -f "$f" "$OUT_DIR/neomovies-$VARIANT-$VERSION-$abi.apk"
           done
 
+          for f in "$TV_IN_DIR"/*.apk; do
+            b="$(basename "$f")"
+            abi="universal"
+            if [[ "$b" == *"arm64-v8a"* ]]; then
+              abi="arm64-v8a"
+            elif [[ "$b" == *"armeabi-v7a"* ]]; then
+              abi="armeabi-v7a"
+            elif [[ "$b" == *"universal"* ]]; then
+              abi="universal"
+            fi
+
+            cp -f "$f" "$TV_OUT_DIR/neomovies-tv-$TV_VARIANT-$VERSION-$abi.apk"
+          done
+
           echo "dir=$OUT_DIR" >> $GITHUB_OUTPUT
+          echo "tv_dir=$TV_OUT_DIR" >> $GITHUB_OUTPUT
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apks-${{ steps.meta.outputs.variant }}
           path: ${{ steps.renamed.outputs.dir }}/*.apk
+
+      - name: Upload TV APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks-${{ steps.meta.outputs.tv_variant }}
+          path: ${{ steps.renamed.outputs.tv_dir }}/*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -145,3 +179,4 @@ jobs:
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           files: |
             ${{ steps.renamed.outputs.dir }}/*.apk
+            ${{ steps.renamed.outputs.tv_dir }}/*.apk
