@@ -16,14 +16,19 @@ fun TvActionButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
 ) {
     Surface(
         onClick = onClick,
         modifier = modifier.defaultMinSize(minWidth = 120.dp),
         shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
-        colors = ClickableSurfaceDefaults.colors(),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        enabled = enabled,
+        colors = ClickableSurfaceDefaults.colors(
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f, disabledScale = 1f),
     ) {
         Text(
             text = text,

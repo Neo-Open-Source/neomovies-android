@@ -28,6 +28,10 @@ class TvVideoPlayerState(
         }
     }
 
+    fun hideControls() {
+        isControlsVisible = false
+    }
+
     private fun updateControlVisibility(seconds: Int = hideSeconds) {
         isControlsVisible = true
         channel.trySend(seconds)

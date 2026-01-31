@@ -37,11 +37,14 @@ fun TvTorrServerSettingsScreen(
     var version by remember { mutableStateOf(prefs.getString("torrserver_version", "136") ?: "136") }
     var autoStart by remember { mutableStateOf(prefs.getBoolean("torrserver_autostart", false)) }
     var status by remember { mutableStateOf("") }
+    var isRunning by remember { mutableStateOf(false) }
     var isBusy by remember { mutableStateOf(false) }
 
     suspend fun refreshStatus() {
         val downloaded = TorrServerManager.isServerDownloaded(context)
         val running = TorrServerManager.isServerRunning()
+        isRunning = running
+
         status =
             when {
                 !downloaded -> context.getString(R.string.torrserver_status_not_downloaded)
@@ -77,27 +80,6 @@ fun TvTorrServerSettingsScreen(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(text = stringResource(R.string.torrserver_version_label))
                 TvActionButton(text = version, onClick = {})
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(text = stringResource(R.string.torrserver_autostart))
-                TvActionButton(
-                    text = if (autoStart) stringResource(R.string.torrserver_status_running) else stringResource(R.string.torrserver_status_stopped),
-                    onClick = {
-                        autoStart = !autoStart
-                        prefs.edit().putBoolean("torrserver_autostart", autoStart).apply()
-                        scope.launch {
-                            if (autoStart) {
-                                TorServerService.start(context)
-                                delay(600)
-                            } else {
-                                TorServerService.stop(context)
-                                delay(600)
-                            }
-                            refreshStatus()
-                        }
-                    },
-                )
             }
 
             if (showDownloadOrUpdate) {
@@ -136,6 +118,7 @@ fun TvTorrServerSettingsScreen(
                         isBusy = false
                     }
                 },
+                enabled = !isRunning && !isBusy,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -150,8 +133,21 @@ fun TvTorrServerSettingsScreen(
                         isBusy = false
                     }
                 },
+                enabled = isRunning && !isBusy,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = stringResource(R.string.torrserver_autostart))
+                TvActionButton(
+                    text = if (autoStart) "✓" else "",
+                    onClick = {
+                        autoStart = !autoStart
+                        prefs.edit().putBoolean("torrserver_autostart", autoStart).apply()
+                        scope.launch { refreshStatus() }
+                    },
+                )
+            }
 
             if (isBusy) {
                 Text(text = stringResource(R.string.credits_loading))

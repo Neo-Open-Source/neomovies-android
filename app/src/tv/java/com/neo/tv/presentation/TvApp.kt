@@ -104,15 +104,25 @@ fun TvApp(
                         title = title,
                         useExo = mode == PlayerEngineMode.EXO,
                         useCollapsHeaders = useCollapsHeaders,
+                        sourceId = sourceId,
                     )
-                    navController.navigate(TvScreens.Player.route)
+                    navController.navigate(TvScreens.Player.route) {
+                        popUpTo(TvScreens.WatchSelector.route) { inclusive = true }
+                    }
                 },
             )
         }
 
         composable(TvScreens.Player.route) {
             TvVideoPlayerScreen(
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    val backSourceId = TvPlayerArgs.sourceId
+                    if (backSourceId != null) {
+                        navController.popBackStack(TvScreens.Details.create(backSourceId), false)
+                    } else {
+                        navController.popBackStack()
+                    }
+                },
             )
         }
 

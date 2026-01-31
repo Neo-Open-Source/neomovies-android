@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,12 +41,19 @@ fun TvVideoPlayerControls(
     viewModel: PlayerViewModel,
     title: String?,
     useCollapsHeaders: Boolean,
+    isControlsVisible: Boolean,
     onShowControls: () -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
     var showAudioDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isControlsVisible) {
+        if (isControlsVisible) {
+            focusRequester.requestFocus()
+        }
+    }
 
     if (showAudioDialog) {
         TrackSelectionDialog(

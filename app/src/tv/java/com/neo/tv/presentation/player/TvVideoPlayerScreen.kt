@@ -78,7 +78,13 @@ fun TvVideoPlayerScreen(
     val playerState = rememberTvVideoPlayerState(hideSeconds = 4)
     val pulseState = rememberTvVideoPlayerPulseState()
 
-    BackHandler(onBack = onBack)
+    BackHandler {
+        if (playerState.isControlsVisible) {
+            playerState.hideControls()
+        } else {
+            onBack()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -94,13 +100,24 @@ fun TvVideoPlayerScreen(
                     KeyEvent.KEYCODE_DPAD_CENTER,
                     KeyEvent.KEYCODE_ENTER,
                     KeyEvent.KEYCODE_DPAD_UP,
-                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    KeyEvent.KEYCODE_DPAD_DOWN,
+                    KeyEvent.KEYCODE_DPAD_LEFT,
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        if (keyCode == KeyEvent.KEYCODE_BACK && playerState.isControlsVisible) {
+                            playerState.hideControls()
+                            return@onKeyEvent true
+                        }
+                        if (playerState.isControlsVisible) {
+                            playerState.showControls(viewModel.player.isPlaying)
+                        }
+
                         if (shouldShow) {
                             playerState.showControls(viewModel.player.isPlaying)
                             return@onKeyEvent true
                         }
                     }
                 }
+
                 false
             }
     ) {
@@ -132,6 +149,7 @@ fun TvVideoPlayerScreen(
                     viewModel = viewModel,
                     title = args.title,
                     useCollapsHeaders = effectiveUseCollapsHeaders,
+                    isControlsVisible = playerState.isControlsVisible,
                     onShowControls = { playerState.showControls(viewModel.player.isPlaying) },
                 )
             },

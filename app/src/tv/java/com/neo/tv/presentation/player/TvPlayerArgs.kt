@@ -7,6 +7,7 @@ object TvPlayerArgs {
     var title: String? = null
     var useExo: Boolean = false
     var useCollapsHeaders: Boolean = false
+    var sourceId: String? = null
 
     fun set(
         urls: ArrayList<String>,
@@ -15,6 +16,7 @@ object TvPlayerArgs {
         title: String?,
         useExo: Boolean,
         useCollapsHeaders: Boolean,
+        sourceId: String?,
     ) {
         this.urls = urls
         this.names = names
@@ -22,6 +24,7 @@ object TvPlayerArgs {
         this.title = title
         this.useExo = useExo
         this.useCollapsHeaders = useCollapsHeaders
+        this.sourceId = sourceId
     }
 
     fun clear() {
@@ -31,5 +34,6 @@ object TvPlayerArgs {
         title = null
         useExo = false
         useCollapsHeaders = false
+        sourceId = null
     }
 }
