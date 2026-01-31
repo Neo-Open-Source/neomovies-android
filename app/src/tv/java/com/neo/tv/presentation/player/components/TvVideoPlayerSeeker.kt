@@ -17,39 +17,65 @@ import kotlinx.coroutines.delay
 fun TvVideoPlayerSeeker(
     player: Player,
     modifier: Modifier = Modifier,
-    onSeek: (Float) -> Unit = { player.seekTo(player.duration.times(it).toLong()) },
     onShowControls: () -> Unit = {},
 ) {
-    val contentDuration = player.contentDuration.milliseconds
-    var currentPositionMs by remember(player) { mutableLongStateOf(0L) }
-    val currentPosition = currentPositionMs.milliseconds
+    var currentPositionMs by remember { mutableLongStateOf(player.currentPosition) }
+    var isFocused by remember { mutableStateOf(false) }
+    val duration = player.duration.coerceAtLeast(1L)
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(300)
+    LaunchedEffect(player.isPlaying) {
+        while (player.isPlaying) {
             currentPositionMs = player.currentPosition
+            delay(500)
         }
     }
 
-    val contentProgressString = currentPosition.toComponents { h, m, s, _ ->
-        if (h > 0) "$h:${m.padStartWith0()}:${s.padStartWith0()}" else "${m.padStartWith0()}:${s.padStartWith0()}"
-    }
-    val contentDurationString = contentDuration.toComponents { h, m, s, _ ->
-        if (h > 0) "$h:${m.padStartWith0()}:${s.padStartWith0()}" else "${m.padStartWith0()}:${s.padStartWith0()}"
-    }
-
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                    when (event.nativeKeyEvent.keyCode) {
+                        android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            val newPos = (player.currentPosition - 10000L).coerceAtLeast(0)
+                            player.seekTo(newPos)
+                            currentPositionMs = newPos
+                            onShowControls()
+                            true
+                        }
+                        android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            val newPos = (player.currentPosition + 10000L).coerceAtMost(player.duration)
+                            player.seekTo(newPos)
+                            currentPositionMs = newPos
+                            onShowControls()
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TvVideoPlayerControllerText(text = contentProgressString)
-        TvVideoPlayerIndicator(
-            progress = (currentPosition / contentDuration).toFloat(),
-            onSeek = onSeek,
-            onShowControls = onShowControls,
-        )
-        TvVideoPlayerControllerText(text = contentDurationString)
+        TvVideoPlayerControllerText(text = formatDuration(currentPositionMs))
+        
+        Box(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            TvVideoPlayerIndicator(
+                progress = currentPositionMs.toFloat() / duration.toFloat(),
+                isFocused = isFocused
+            )
+        }
+        
+        TvVideoPlayerControllerText(text = formatDuration(player.duration))
     }
+}
+
+private fun formatDuration(ms: Long): String {
+    val totalSeconds = (ms / 1000).toInt()
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
 }
 
 private fun Number.padStartWith0() = this.toString().padStart(2, '0')
