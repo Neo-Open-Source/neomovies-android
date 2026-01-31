@@ -14,23 +14,24 @@ import androidx.tv.material3.MaterialTheme
 @Composable
 fun TvVideoPlayerIndicator(
     progress: Float,
-    onSeek: (Float) -> Unit,
-    onShowControls: () -> Unit,
+    isFocused: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val clamped = progress.coerceIn(0f, 1f)
+    val height by animateDpAsState(targetValue = if (isFocused) 10.dp else 4.dp)
+    val color = if (isFocused) MaterialTheme.colorScheme.primary else Color.White
+
     Box(
         modifier = modifier
-            .padding(horizontal = 12.dp)
-            .height(6.dp)
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .height(height)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(clamped)
-                .height(6.dp)
-                .background(MaterialTheme.colorScheme.primary),
+                .fillMaxSize()
+                .background(color),
         )
     }
 }
