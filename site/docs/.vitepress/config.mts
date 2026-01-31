@@ -5,8 +5,8 @@ export default defineConfig({
   title: 'NeoMovies',
   description: 'Download NeoMovies for Android',
   head: [
-    ['link', { rel: 'icon', href: 'favicon.ico' }],
-    ['link', { rel: 'shortcut icon', href: 'favicon.ico' }],
+    ['link', { rel: 'icon', type: 'image/x-icon', href: 'favicon.ico', sizes: 'any' }],
+    ['link', { rel: 'shortcut icon', type: 'image/x-icon', href: 'favicon.ico', sizes: 'any' }],
   ],
   themeConfig: {
     nav: [
