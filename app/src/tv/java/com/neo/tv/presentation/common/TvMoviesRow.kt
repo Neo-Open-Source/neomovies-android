@@ -29,7 +29,7 @@ fun TvMoviesRow(
     onOpenDetails: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardWidth: Dp = 180.dp
+    val cardWidth: Dp = 160.dp
 
     androidx.compose.foundation.layout.Column(modifier = modifier.fillMaxWidth()) {
         Row(

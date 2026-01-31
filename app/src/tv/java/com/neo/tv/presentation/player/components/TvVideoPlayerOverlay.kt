@@ -19,6 +19,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -69,7 +71,9 @@ fun TvVideoPlayerOverlay(
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 56.dp)
-                        .padding(bottom = 32.dp, top = 8.dp),
+                        .padding(bottom = 32.dp, top = 8.dp)
+                        .focusRequester(focusRequester)
+                        .focusable(),
                 ) {
                     controls()
                 }

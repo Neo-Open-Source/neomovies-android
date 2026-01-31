@@ -1,28 +1,36 @@
 package com.neo.tv.presentation.player.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 
 @Composable
 fun TvVideoPlayerMainFrame(
-    title: String?,
-    actions: @Composable () -> Unit,
+    mediaTitle: @Composable () -> Unit,
     seeker: @Composable () -> Unit,
+    mediaActions: @Composable () -> Unit = {},
+    more: (@Composable () -> Unit)? = null,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        if (!title.isNullOrBlank()) {
-            Text(text = title, style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Box(Modifier.weight(1f)) { mediaTitle() }
+            mediaActions()
         }
-        actions()
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         seeker()
+        if (more != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(modifier = Modifier.fillMaxWidth()) { more() }
+        }
     }
 }

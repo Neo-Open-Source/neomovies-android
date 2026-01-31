@@ -21,7 +21,6 @@
 <img src=".github/assets/Screenshot_2.png" width="30%" style="border-radius: 12px;" />
 <img src=".github/assets/Screenshot_3.png" width="30%" style="border-radius: 12px;" />
 <img src=".github/assets/Screenshot_4.png" width="30%" style="border-radius: 12px;" />
-<img src=".github/assets/Screenshot_5.png" width="30%" style="border-radius: 12px;" />
 </div>
 </div>
 

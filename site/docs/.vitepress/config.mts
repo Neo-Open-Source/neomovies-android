@@ -4,6 +4,7 @@ export default defineConfig({
   lang: 'en-US',
   title: 'NeoMovies',
   description: 'Download NeoMovies for Android',
+  head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
   themeConfig: {
     nav: [
       { text: 'Download', link: '/download' },

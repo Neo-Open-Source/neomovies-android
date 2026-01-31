@@ -26,6 +26,10 @@ import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import com.neo.player.mpv.MPVPlayer
+import com.neo.neomovies.ui.settings.PlayerEngineManager
+import com.neo.neomovies.ui.settings.PlayerEngineMode
+import com.neo.neomovies.ui.settings.SourceManager
+import com.neo.neomovies.ui.settings.SourceMode
 import java.io.File
 import java.net.URLDecoder
 import kotlinx.coroutines.channels.Channel
@@ -55,9 +59,11 @@ class PlayerViewModel(
 
     private var baseTitle: String = ""
 
-    private val forceFirstAudioTrack: Boolean by lazy {
-        savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS) ?: false
+    private val useCollapsHeaders: Boolean by lazy {
+        savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS)
+            ?: (SourceManager.getMode(getApplication()) == SourceMode.COLLAPS)
     }
+    private val forceFirstAudioTrack: Boolean by lazy { useCollapsHeaders }
 
     private var appliedFirstAudioOverride: Boolean = false
 
@@ -89,7 +95,9 @@ class PlayerViewModel(
                 .setUsage(C.USAGE_MEDIA)
                 .build()
 
-        useExo = savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_EXO) ?: false
+        useExo = savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_EXO)
+            ?: (PlayerEngineManager.getMode(getApplication()) == PlayerEngineMode.EXO)
+        Log.d("PlayerVM", "init useExo=$useExo useCollapsHeaders=$useCollapsHeaders")
         player = createPlayer(useExo, audioAttributes)
         player.addListener(this)
     }
@@ -112,6 +120,7 @@ class PlayerViewModel(
     }
 
     private fun createPlayer(useExo: Boolean, audioAttributes: AudioAttributes): Player {
+        Log.d("PlayerVM", "createPlayer useExo=$useExo useCollapsHeaders=$useCollapsHeaders")
         return if (!useExo) {
             val builder =
                 MPVPlayer.Builder(getApplication())
@@ -120,8 +129,6 @@ class PlayerViewModel(
                 .setSeekForwardIncrementMs(10_000)
                 .setPauseAtEndOfMediaItems(true)
 
-            val useCollapsHeaders =
-                savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS) ?: false
             if (useCollapsHeaders) {
                 builder.setHttpHeaders(
                     userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -146,8 +153,6 @@ class PlayerViewModel(
 
             val httpDataSourceFactory = DefaultHttpDataSource.Factory()
 
-            val useCollapsHeaders =
-                savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS) ?: false
             if (useCollapsHeaders) {
                 httpDataSourceFactory.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                 httpDataSourceFactory.setDefaultRequestProperties(
@@ -169,7 +174,7 @@ class PlayerViewModel(
                     Build.MODEL.contains("sdk_gphone", ignoreCase = true) ||
                     Build.MANUFACTURER.contains("genymotion", ignoreCase = true)
                 ) {
-                    DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+                    DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
                 } else {
                     DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
                 }

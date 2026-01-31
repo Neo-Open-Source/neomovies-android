@@ -101,7 +101,8 @@
 
     <string-array name="changes_history">
         <item>0.1.0-pre1||- Initial prerelease\n- Add players: ExoPlayer and libMPV\n- Add TorrServer and made small improves.</item>
-       <item>0.1.0-pre2||- Add Collaps player and TV UI.</item>
+        <item>0.1.0-pre2||- Add Collaps player and TV UI.</item>
+        <item>0.1.0-pre3||- Bug fixes and rewrite TV Player.</item>
     </string-array>
 
     <string name="credits_loading">Loading…</string>

@@ -3,6 +3,7 @@ package com.neo.neomovies.ui.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CloudDownload
@@ -58,7 +59,11 @@ fun SettingsScreen(
         },
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(it).padding(vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(it)
+                .navigationBarsPadding()
+                .padding(vertical = 8.dp),
         ) {
             PreferenceItem(
                 title = stringResource(R.string.settings_language),

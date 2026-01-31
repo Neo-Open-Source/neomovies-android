@@ -11,7 +11,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.neo.neomovies.ui.about.CreditsScreen
 import com.neo.neomovies.ui.navigation.CategoryType
-import com.neo.player.PlayerActivity
 import com.neo.tv.presentation.about.TvAboutScreen
 import com.neo.tv.presentation.dashboard.TvDashboardScreen
 import com.neo.tv.presentation.details.TvDetailsScreen
@@ -28,6 +27,10 @@ import com.neo.tv.presentation.settings.TvSettingsScreen
 import com.neo.tv.presentation.settings.TvSourceSettingsScreen
 import com.neo.tv.presentation.settings.TvTorrServerSettingsScreen
 import com.neo.tv.presentation.watch.TvWatchSelectorScreen
+import com.neo.neomovies.ui.settings.PlayerEngineManager
+import com.neo.neomovies.ui.settings.PlayerEngineMode
+import com.neo.neomovies.ui.settings.SourceManager
+import com.neo.neomovies.ui.settings.SourceMode
 
 @Composable
 fun TvApp(
@@ -92,16 +95,17 @@ fun TvApp(
                 sourceId = sourceId,
                 onBack = { navController.popBackStack() },
                 onWatch = { urls, names, startIndex, title ->
-                    val intent = Intent(context, PlayerActivity::class.java).apply {
-                        putStringArrayListExtra(PlayerActivity.EXTRA_URLS, urls)
-                        putStringArrayListExtra(PlayerActivity.EXTRA_NAMES, names)
-                        putExtra(PlayerActivity.EXTRA_TITLE, title)
-                        putExtra(PlayerActivity.EXTRA_START_INDEX, startIndex)
-                        putExtra(PlayerActivity.EXTRA_USE_EXO, true)
-                    }
-                    context.startActivity(intent)
-                    // Возвращаемся назад
-                    navController.popBackStack()
+                    val mode = PlayerEngineManager.getMode(context)
+                    val useCollapsHeaders = SourceManager.getMode(context) == SourceMode.COLLAPS
+                    TvPlayerArgs.set(
+                        urls = urls,
+                        names = names,
+                        startIndex = startIndex,
+                        title = title,
+                        useExo = mode == PlayerEngineMode.EXO,
+                        useCollapsHeaders = useCollapsHeaders,
+                    )
+                    navController.navigate(TvScreens.Player.route)
                 },
             )
         }

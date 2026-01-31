@@ -172,7 +172,7 @@ fun TvSearchScreen(
                 }
                 else -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 180.dp),
+                        columns = GridCells.Adaptive(minSize = 160.dp),
                         modifier = Modifier.weight(1f),
                         state = listState,
                         contentPadding = PaddingValues(bottom = 24.dp),

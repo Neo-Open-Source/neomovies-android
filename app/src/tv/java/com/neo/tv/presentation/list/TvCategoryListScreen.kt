@@ -71,7 +71,7 @@ fun TvCategoryListScreen(
             }
             else -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 180.dp),
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     modifier = Modifier.fillMaxSize().padding(padding),
                     state = listState,
                     contentPadding = PaddingValues(bottom = 24.dp),

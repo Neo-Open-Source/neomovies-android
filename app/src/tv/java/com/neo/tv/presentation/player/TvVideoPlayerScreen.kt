@@ -2,7 +2,9 @@ package com.neo.tv.presentation.player
 
 import android.app.Application
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.ViewGroup
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -13,14 +15,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSavedStateRegistryOwner
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.ui.PlayerView
+
 import androidx.lifecycle.SavedStateViewModelFactory
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.savedstate.SavedStateRegistryOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.ui.PlayerView
+import com.neo.player.PlayerActivity
 import com.neo.player.PlayerViewModel
+import com.neo.neomovies.ui.settings.PlayerEngineManager
+import com.neo.neomovies.ui.settings.PlayerEngineMode
+import com.neo.neomovies.ui.settings.SourceManager
+import com.neo.neomovies.ui.settings.SourceMode
 import com.neo.tv.presentation.player.components.TvVideoPlayerControls
 import com.neo.tv.presentation.player.components.TvVideoPlayerOverlay
 import com.neo.tv.presentation.player.components.TvVideoPlayerPulse
@@ -39,18 +48,28 @@ fun TvVideoPlayerScreen(
         return
     }
 
-    val owner = LocalViewModelStoreOwner.current
-    val savedStateOwner = owner as SavedStateRegistryOwner
-    val defaultArgs = remember(args.useExo, args.useCollapsHeaders) {
+    val owner = LocalViewModelStoreOwner.current ?: return
+    val savedStateOwner = LocalSavedStateRegistryOwner.current
+    val effectiveUseExo = remember(args.useExo) {
+        args.useExo || PlayerEngineManager.getMode(context) == PlayerEngineMode.EXO
+    }
+    val effectiveUseCollapsHeaders =
+        args.useCollapsHeaders || SourceManager.getMode(context) == SourceMode.COLLAPS
+
+    val defaultArgs = remember(effectiveUseExo, effectiveUseCollapsHeaders) {
         Bundle().apply {
-            putBoolean(com.neo.player.PlayerActivity.EXTRA_USE_EXO, args.useExo)
-            putBoolean(com.neo.player.PlayerActivity.EXTRA_USE_COLLAPS_HEADERS, args.useCollapsHeaders)
+            putBoolean(PlayerActivity.EXTRA_USE_EXO, effectiveUseExo)
+            putBoolean(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS, effectiveUseCollapsHeaders)
         }
     }
+    val viewModelKey = remember(urls, effectiveUseExo, effectiveUseCollapsHeaders, args.startIndex, args.title) {
+        "tv_player_${effectiveUseExo}_${effectiveUseCollapsHeaders}_${args.startIndex}_${args.title}_${urls.hashCode()}"
+    }
     val viewModel: PlayerViewModel = viewModel(
-        viewModelStoreOwner = owner!!,
+        viewModelStoreOwner = owner,
+        key = viewModelKey,
         factory = SavedStateViewModelFactory(
-            (context.applicationContext as Application),
+            context.applicationContext as Application,
             savedStateOwner,
             defaultArgs,
         )
@@ -61,7 +80,30 @@ fun TvVideoPlayerScreen(
 
     BackHandler(onBack = onBack)
 
-    Box(modifier = Modifier.fillMaxSize().focusable()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.nativeKeyEvent.action != KeyEvent.ACTION_UP) return@onKeyEvent false
+
+                val shouldShow = !playerState.isControlsVisible
+                val keyCode = event.nativeKeyEvent.keyCode
+                when (keyCode) {
+                    KeyEvent.KEYCODE_BACK,
+                    KeyEvent.KEYCODE_DPAD_CENTER,
+                    KeyEvent.KEYCODE_ENTER,
+                    KeyEvent.KEYCODE_DPAD_UP,
+                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        if (shouldShow) {
+                            playerState.showControls(viewModel.player.isPlaying)
+                            return@onKeyEvent true
+                        }
+                    }
+                }
+                false
+            }
+    ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -87,14 +129,16 @@ fun TvVideoPlayerScreen(
             controls = {
                 TvVideoPlayerControls(
                     player = viewModel.player,
+                    viewModel = viewModel,
                     title = args.title,
+                    useCollapsHeaders = effectiveUseCollapsHeaders,
                     onShowControls = { playerState.showControls(viewModel.player.isPlaying) },
                 )
             },
         )
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(urls, args.startIndex) {
         viewModel.initializePlayer(
             urls = urls,
             names = args.names,

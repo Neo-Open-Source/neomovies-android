@@ -108,7 +108,7 @@ fun TvFavoritesScreen(
                 ) {
                     FavoritesFilterRow(modifier = Modifier.fillMaxWidth())
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 180.dp),
+                        columns = GridCells.Adaptive(minSize = 160.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(24.dp),

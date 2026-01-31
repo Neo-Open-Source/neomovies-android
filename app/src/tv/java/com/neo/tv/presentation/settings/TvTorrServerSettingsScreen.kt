@@ -86,6 +86,16 @@ fun TvTorrServerSettingsScreen(
                     onClick = {
                         autoStart = !autoStart
                         prefs.edit().putBoolean("torrserver_autostart", autoStart).apply()
+                        scope.launch {
+                            if (autoStart) {
+                                TorServerService.start(context)
+                                delay(600)
+                            } else {
+                                TorServerService.stop(context)
+                                delay(600)
+                            }
+                            refreshStatus()
+                        }
                     },
                 )
             }

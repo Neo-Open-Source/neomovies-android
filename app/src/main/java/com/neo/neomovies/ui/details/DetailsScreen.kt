@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -147,6 +148,7 @@ fun DetailsScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
+                                    .navigationBarsPadding()
                                     .padding(horizontal = 16.dp, vertical = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
@@ -172,6 +174,7 @@ fun DetailsScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .verticalScroll(rememberScrollState())
+                                    .navigationBarsPadding()
                                     .padding(vertical = 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {

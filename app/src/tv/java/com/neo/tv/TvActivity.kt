@@ -10,12 +10,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
+import com.neo.neomovies.ui.settings.LanguageManager
 import com.neo.tv.presentation.TvApp
 import com.neo.tv.presentation.theme.NeoMoviesTvTheme
 
 class TvActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(LanguageManager.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        LanguageManager.apply(this)
 
         setContent {
             NeoMoviesTvTheme {
@@ -34,5 +41,10 @@ class TvActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        LanguageManager.apply(this)
     }
 }

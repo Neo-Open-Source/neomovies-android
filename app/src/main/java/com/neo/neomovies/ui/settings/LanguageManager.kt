@@ -1,6 +1,8 @@
 package com.neo.neomovies.ui.settings
 
 import android.content.Context
+import android.content.res.Configuration
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import java.util.Locale
@@ -47,5 +49,26 @@ object LanguageManager {
         }
 
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
+    }
+
+    fun wrap(context: Context): Context {
+        val mode = getMode(context)
+        if (mode == LanguageMode.SYSTEM) return context
+
+        val locale = when (mode) {
+            LanguageMode.RU -> Locale.forLanguageTag("ru")
+            LanguageMode.EN -> Locale.forLanguageTag("en")
+            LanguageMode.SYSTEM -> Locale.getDefault()
+        }
+
+        Locale.setDefault(locale)
+        val config = Configuration(context.resources.configuration)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            config.setLocales(android.os.LocaleList(locale))
+        } else {
+            @Suppress("DEPRECATION")
+            config.setLocale(locale)
+        }
+        return context.createConfigurationContext(config)
     }
 }
