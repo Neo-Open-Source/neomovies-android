@@ -47,6 +47,27 @@ fun TvDetailsScreen(
         !prefs.getString("token", null).isNullOrBlank()
     }
 
+    val kpId = state.details?.externalIds?.kp
+        ?: sourceId.removeSuffix(".0").removePrefix("kp_").toIntOrNull()
+    val watchedPrefs = remember { context.getSharedPreferences("collaps_watched", android.content.Context.MODE_PRIVATE) }
+    val watchedSummary = remember(kpId) {
+        if (kpId == null) return@remember null
+        val watchedCount = watchedPrefs.all
+            .filterKeys { it.startsWith("kp_${kpId}_s") && it.endsWith("_watched") }
+            .count { it.value == true }
+        val lastSeason = watchedPrefs.getInt("kp_${kpId}_last_season", -1)
+        val lastEpisode = watchedPrefs.getInt("kp_${kpId}_last_episode", -1)
+        val lastPosition = watchedPrefs.getLong("kp_${kpId}_last_position", 0L)
+        val lastDuration = watchedPrefs.getLong("kp_${kpId}_last_duration", 0L)
+        WatchedSummary(
+            watchedCount = watchedCount,
+            lastSeason = lastSeason,
+            lastEpisode = lastEpisode,
+            lastPosition = lastPosition,
+            lastDuration = lastDuration,
+        )
+    }
+
     val title = state.details?.title
         ?: state.details?.name
         ?: state.details?.originalTitle
@@ -125,6 +146,24 @@ fun TvDetailsScreen(
                             maxLines = 6,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        watchedSummary?.let { summary ->
+                            if (summary.watchedCount > 0) {
+                                Text(
+                                    text = "Просмотрено серий: ${summary.watchedCount}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            if (summary.lastSeason > 0 && summary.lastEpisode > 0) {
+                                val progress = if (summary.lastDuration > 0) {
+                                    ((summary.lastPosition.toFloat() / summary.lastDuration) * 100).toInt()
+                                } else null
+                                val progressSuffix = progress?.let { " • ${it}%" }.orEmpty()
+                                Text(
+                                    text = "Остановились: S%02dE%02d%s".format(summary.lastSeason, summary.lastEpisode, progressSuffix),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             TvActionButton(
                                 text = stringResource(R.string.action_watch),
@@ -165,3 +204,11 @@ private fun resolveDetailsImageUrl(value: String?): String? {
     if (v.startsWith("http://") || v.startsWith("https://")) return v
     return normalizeImageUrl(v)
 }
+
+private data class WatchedSummary(
+    val watchedCount: Int,
+    val lastSeason: Int,
+    val lastEpisode: Int,
+    val lastPosition: Long,
+    val lastDuration: Long,
+)

@@ -100,9 +100,9 @@
     <string name="changes_version_label">Version: %1$s</string>
 
     <string-array name="changes_history">
-        <item>0.1.0-pre1||- Initial prerelease\n- Add players: ExoPlayer and libMPV\n- Add TorrServer and made small improves.</item>
-        <item>0.1.0-pre2||- Add Collaps player and TV UI.</item>
         <item>0.1.0-pre3||- Bug fixes and rewrite TV Player.</item>
+        <item>0.1.0-pre2||- Add Collaps player and TV UI.</item>
+        <item>0.1.0-pre1||- Initial prerelease\n- Add players: ExoPlayer and libMPV\n- Add TorrServer and made small improves.</item>
     </string-array>
 
     <string name="credits_loading">Loading…</string>
@@ -173,6 +173,8 @@
     <string name="player_controls_skip_back">Skip back</string>
     <string name="player_controls_skip_forward">Skip forward</string>
     <string name="player_controls_progress">Seek</string>
+    <string name="player_controls_pip">Picture in picture</string>
+    <string name="player_controls_aspect_ratio">Aspect ratio</string>
 
     <string name="picture_in_picture">Picture in picture</string>
     <string name="select_playback_speed">Select playback speed</string>

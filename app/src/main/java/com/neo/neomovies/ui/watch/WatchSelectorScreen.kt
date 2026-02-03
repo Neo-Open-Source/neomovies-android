@@ -22,12 +22,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,9 +51,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +77,7 @@ import org.koin.core.parameter.parametersOf
 fun WatchSelectorScreen(
     sourceId: String,
     onBack: () -> Unit,
-    onWatch: (ArrayList<String>, ArrayList<String>, Int, String?) -> Unit,
+    onWatch: (ArrayList<String>, ArrayList<String>, Int, String?, (Int, Int, Int, Long, Long) -> Unit) -> Unit,
 ) {
     val viewModel: WatchSelectorViewModel = koinViewModel(parameters = { parametersOf(sourceId) })
     val state = viewModel.state.collectAsState().value
@@ -97,6 +99,11 @@ fun WatchSelectorScreen(
     val effectiveTitle = state.details?.title?.takeIf { it.isNotBlank() }
         ?: state.details?.name?.takeIf { it.isNotBlank() }
 
+    // Create episode progress callback for Collaps
+    val episodeProgressCallback: (Int, Int, Int, Long, Long) -> Unit = { kpId, season, episode, positionMs, durationMs ->
+        viewModel.updateEpisodeWatchProgress(kpId, season, episode, positionMs, durationMs)
+    }
+
     LaunchedEffect(state.selectedPlaybackUrl, state.selectedPlaylistUrls, state.selectedPlaylistNames, state.selectedPlaylistStartIndex) {
         val playlist = state.selectedPlaylistUrls
         val playlistNames = state.selectedPlaylistNames
@@ -104,14 +111,21 @@ fun WatchSelectorScreen(
 
         when {
             playlist != null && playlistNames != null && startIndex != null -> {
-                onWatch(ArrayList(playlist), ArrayList(playlistNames), startIndex, effectiveTitle)
+                // Pass the episode progress callback to the player
+                onWatch(ArrayList(playlist), ArrayList(playlistNames), startIndex, effectiveTitle, episodeProgressCallback)
                 viewModel.clearSelectedPlaybackUrl()
             }
             state.selectedPlaybackUrl != null -> {
-                onWatch(arrayListOf(state.selectedPlaybackUrl), arrayListOf(""), 0, effectiveTitle)
+                onWatch(arrayListOf(state.selectedPlaybackUrl), arrayListOf(""), 0, effectiveTitle, episodeProgressCallback)
                 viewModel.clearSelectedPlaybackUrl()
             }
         }
+    }
+
+    // Update episode progress when player reports progress
+    LaunchedEffect(Unit) {
+        // This will be called from PlayerActivity with progress updates
+        // For now, we'll handle this through the callback system
     }
 
     if (showTorrServerDialog) {
@@ -344,16 +358,53 @@ fun WatchSelectorScreen(
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                                     ) {
                                         items(episodes) { ep ->
+                                            val progressPercent = if (ep.watchProgressMs > 0) {
+                                                val duration = 45 * 60 * 1000L // Approximate duration in ms
+                                                ((ep.watchProgressMs.toFloat() / duration) * 100).toInt()
+                                            } else {
+                                                null
+                                            }
+                                            val supportingContent: (@Composable () -> Unit)? = when {
+                                                ep.isWatched -> {
+                                                    { Text(text = "Watched", color = MaterialTheme.colorScheme.primary) }
+                                                }
+                                                progressPercent != null -> {
+                                                    { Text(text = "${progressPercent}% watched", color = MaterialTheme.colorScheme.secondary) }
+                                                }
+                                                else -> null
+                                            }
+                                            val leadingContent: (@Composable () -> Unit)? = when {
+                                                ep.isWatched -> {
+                                                    {
+                                                        Icon(
+                                                            imageVector = Icons.Default.CheckCircle,
+                                                            contentDescription = "Watched",
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                }
+                                                progressPercent != null -> {
+                                                    {
+                                                        CircularProgressIndicator(
+                                                            progress = { ep.watchProgressMs.toFloat() / (45 * 60 * 1000L) },
+                                                            modifier = Modifier.size(24.dp),
+                                                            strokeWidth = 2.dp,
+                                                            color = MaterialTheme.colorScheme.secondary
+                                                        )
+                                                    }
+                                                }
+                                                else -> null
+                                            }
                                             ListItem(
                                                 headlineContent = { Text(text = "Episode ${ep.number}") },
+                                                supportingContent = supportingContent,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .clip(RoundedCornerShape(14.dp))
-                                                    .clickable {
-                                                        viewModel.selectEpisode(ep.number)
-                                                        val firstVoice = ep.voiceovers.firstOrNull() ?: return@clickable
-                                                        viewModel.selectVoiceover(firstVoice.id, firstVoice.playbackUrl)
-                                                    },
+                                                    .clickable { viewModel.selectEpisode(ep.number) }
+                                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                                leadingContent = leadingContent,
                                             )
                                         }
                                     }

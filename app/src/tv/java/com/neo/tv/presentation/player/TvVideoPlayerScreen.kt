@@ -4,40 +4,46 @@ import android.app.Application
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalSavedStateRegistryOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateViewModelFactory
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.neo.neomovies.ui.settings.PlayerEngineManager
 import com.neo.neomovies.ui.settings.PlayerEngineMode
 import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
+import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import com.neo.player.PlayerActivity
 import com.neo.player.PlayerViewModel
 import com.neo.tv.presentation.player.components.TvVideoPlayerControls
 import com.neo.tv.presentation.player.components.TvVideoPlayerOverlay
 import com.neo.tv.presentation.player.components.TvVideoPlayerPulse
-import com.neo.tv.presentation.player.components.TvVideoPlayerPulseState
 import com.neo.tv.presentation.player.components.rememberTvVideoPlayerPulseState
 import com.neo.tv.presentation.player.components.rememberTvVideoPlayerState
+import kotlinx.coroutines.delay
 
 @Composable
 fun TvVideoPlayerScreen(
@@ -82,33 +88,25 @@ fun TvVideoPlayerScreen(
         )
     )
 
+    val playerUiState by viewModel.uiState.collectAsStateWithLifecycleCompat()
+
     val playerState = rememberTvVideoPlayerState(hideSeconds = 4)
     val pulseState = rememberTvVideoPlayerPulseState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var resizeMode by remember { mutableStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
-    // --- Логика двойного нажатия "Назад" ---
-    var lastBackPressTime by remember { mutableLongStateOf(0L) }
-
-    val handleBackPress = {
-        if (playerState.isControlsVisible) {
-            playerState.hideControls()
-        } else {
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastBackPressTime < 2000) {
-                // Если прошло меньше 2 секунд с последнего нажатия -> Выходим
-                onBack()
-            } else {
-                // Иначе показываем тост и обновляем время
-                lastBackPressTime = currentTime
-                Toast.makeText(context, "Нажмите еще раз для выхода", Toast.LENGTH_SHORT).show()
-                // Опционально: можно показать контроллы, чтобы пользователь видел, что плеер жив
-                playerState.showControls(viewModel.player.isPlaying)
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                viewModel.player.pause()
+                playerState.showControls(false)
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    BackHandler {
-        handleBackPress()
-    }
+    BackHandler { onBack() }
 
     Box(
         modifier = Modifier
@@ -118,49 +116,44 @@ fun TvVideoPlayerScreen(
                 if (event.nativeKeyEvent.action != KeyEvent.ACTION_UP) return@onKeyEvent false
 
                 val keyCode = event.nativeKeyEvent.keyCode
-                
-                // Если контроллы скрыты, обрабатываем быструю перемотку стрелками
-                if (!playerState.isControlsVisible) {
-                    when (keyCode) {
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            viewModel.player.seekBack()
-                            pulseState.displayPulse(TvVideoPlayerPulseState.Type.BACK)
-                            playerState.showControls(viewModel.player.isPlaying)
-                            return@onKeyEvent true
-                        }
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            viewModel.player.seekForward()
-                            pulseState.displayPulse(TvVideoPlayerPulseState.Type.FORWARD)
-                            playerState.showControls(viewModel.player.isPlaying)
-                            return@onKeyEvent true
-                        }
-                    }
-                }
-
                 when (keyCode) {
                     KeyEvent.KEYCODE_BACK -> {
-                        handleBackPress()
+                        onBack()
+                        return@onKeyEvent true
+                    }
+
+                    KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                        viewModel.player.seekBack()
+                        playerState.showControls(viewModel.player.isPlaying)
+                        return@onKeyEvent true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                        viewModel.player.seekForward()
+                        playerState.showControls(viewModel.player.isPlaying)
+                        return@onKeyEvent true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_PLAY,
+                    KeyEvent.KEYCODE_MEDIA_PAUSE,
+                    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                        when (keyCode) {
+                            KeyEvent.KEYCODE_MEDIA_PLAY -> viewModel.player.play()
+                            KeyEvent.KEYCODE_MEDIA_PAUSE -> viewModel.player.pause()
+                            else -> if (viewModel.player.isPlaying) viewModel.player.pause() else viewModel.player.play()
+                        }
+                        playerState.showControls(viewModel.player.isPlaying)
                         return@onKeyEvent true
                     }
                     KeyEvent.KEYCODE_DPAD_CENTER,
-                    KeyEvent.KEYCODE_ENTER -> {
-                        if (playerState.isControlsVisible) {
-                            // Если меню открыто, даем обработать клик самому UI (или ставим паузу)
-                             if (viewModel.player.isPlaying) viewModel.player.pause() else viewModel.player.play()
-                        } else {
-                            playerState.showControls(viewModel.player.isPlaying)
-                        }
-                        return@onKeyEvent true
-                    }
-                    // Любые нажатия стрелок пробуждают интерфейс
+                    KeyEvent.KEYCODE_ENTER,
                     KeyEvent.KEYCODE_DPAD_UP,
                     KeyEvent.KEYCODE_DPAD_DOWN,
                     KeyEvent.KEYCODE_DPAD_LEFT,
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        if (!playerState.isControlsVisible) {
+                        if (playerState.isControlsVisible) {
                             playerState.showControls(viewModel.player.isPlaying)
-                            // Не возвращаем true, чтобы фокус мог переместиться на элементы управления
-                            return@onKeyEvent false 
+                        } else {
+                            playerState.showControls(viewModel.player.isPlaying)
+                            return@onKeyEvent true
                         }
                     }
                 }
@@ -175,11 +168,14 @@ fun TvVideoPlayerScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     useController = false
+                    setBackgroundColor(android.graphics.Color.BLACK)
+                    setShutterBackgroundColor(android.graphics.Color.BLACK)
                 }
             },
             modifier = Modifier.fillMaxSize(),
             update = { view ->
                 view.player = viewModel.player
+                view.resizeMode = resizeMode
             }
         )
 
@@ -193,10 +189,18 @@ fun TvVideoPlayerScreen(
                 TvVideoPlayerControls(
                     player = viewModel.player,
                     viewModel = viewModel,
-                    title = args.title,
+                    title = playerUiState.currentItemTitle.ifBlank { args.title },
                     useCollapsHeaders = effectiveUseCollapsHeaders,
                     isControlsVisible = playerState.isControlsVisible,
                     onShowControls = { playerState.showControls(viewModel.player.isPlaying) },
+                    resizeMode = resizeMode,
+                    onToggleResizeMode = {
+                        resizeMode = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+                            AspectRatioFrameLayout.RESIZE_MODE_FILL
+                        } else {
+                            AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    },
                 )
             },
         )
@@ -209,9 +213,19 @@ fun TvVideoPlayerScreen(
             startIndex = args.startIndex,
             title = args.title,
             startFromBeginning = false,
+            kinopoiskId = args.kinopoiskId,
+            episodeProgressCallback = args.episodeProgressCallback,
         )
         onDispose {
+            viewModel.updatePlaybackProgress()
             TvPlayerArgs.clear()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        while (true) {
+            viewModel.updatePlaybackProgress()
+            delay(5000L)
         }
     }
 }

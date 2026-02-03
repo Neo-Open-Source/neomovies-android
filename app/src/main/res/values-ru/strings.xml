@@ -44,9 +44,9 @@
     <string name="changes_version_label">Версия: %1$s</string>
 
     <string-array name="changes_history">
-        <item>0.1.0-pre1||- Первый пререлиз\n- Добавлены плееры: ExoPlayer и libMPV\n- Добавлен Torrserver и мелкие исправления.</item>
-        <item>0.1.0-pre2||- Добавлен плеер Collaps и версия для телевизоров.</item>
         <item>0.1.0-pre3||- Баг фиксы и переписан плеер для телевизоров.</item>
+        <item>0.1.0-pre2||- Добавлен плеер Collaps и версия для телевизоров.</item>
+        <item>0.1.0-pre1||- Первый пререлиз\n- Добавлены плееры: ExoPlayer и libMPV\n- Добавлен Torrserver и мелкие исправления.</item>
     </string-array>
 
     <string name="credits_loading">Загрузка…</string>

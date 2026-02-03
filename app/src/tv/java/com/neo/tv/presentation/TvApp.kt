@@ -94,7 +94,7 @@ fun TvApp(
             TvWatchSelectorScreen(
                 sourceId = sourceId,
                 onBack = { navController.popBackStack() },
-                onWatch = { urls, names, startIndex, title ->
+                onWatch = { urls, names, startIndex, title, kinopoiskId, episodeProgressCallback ->
                     val mode = PlayerEngineManager.getMode(context)
                     val useCollapsHeaders = SourceManager.getMode(context) == SourceMode.COLLAPS
                     TvPlayerArgs.set(
@@ -105,7 +105,10 @@ fun TvApp(
                         useExo = mode == PlayerEngineMode.EXO,
                         useCollapsHeaders = useCollapsHeaders,
                         sourceId = sourceId,
+                        kinopoiskId = kinopoiskId,
+                        episodeProgressCallback = episodeProgressCallback,
                     )
+
                     navController.navigate(TvScreens.Player.route) {
                         popUpTo(TvScreens.WatchSelector.route) { inclusive = true }
                     }

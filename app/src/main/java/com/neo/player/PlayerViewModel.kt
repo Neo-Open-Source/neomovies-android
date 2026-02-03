@@ -52,7 +52,11 @@ class PlayerViewModel(
     private var useExo: Boolean = false
     var playbackSpeed: Float = 1f
     var isInPictureInPictureMode: Boolean = false
+    var playWhenReady: Boolean = true
     private var baseTitle: String = ""
+
+    private var kpId: Int? = null
+    private var onEpisodeProgressUpdate: ((Int, Int, Int, Long, Long) -> Unit)? = null
 
     private val useCollapsHeaders: Boolean by lazy {
         savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS)
@@ -112,7 +116,7 @@ class PlayerViewModel(
                 .setAudioAttributes(audioAttributes, true)
                 .setSeekBackIncrementMs(10_000)
                 .setSeekForwardIncrementMs(10_000)
-                .setPauseAtEndOfMediaItems(true)
+                .setPauseAtEndOfMediaItems(false)
 
             if (useCollapsHeaders) {
                 builder.setHttpHeaders(
@@ -163,6 +167,7 @@ class PlayerViewModel(
                 .setMediaSourceFactory(mediaSourceFactory)
                 .build().apply {
                     setAudioAttributes(this@PlayerViewModel.audioAttributes, true)
+                    setPauseAtEndOfMediaItems(false)
                     addAnalyticsListener(createAnalyticsListener())
                 }
         }
@@ -190,8 +195,12 @@ class PlayerViewModel(
         startIndex: Int,
         title: String?,
         startFromBeginning: Boolean,
+        kinopoiskId: Int? = null,
+        episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
     ) {
         baseTitle = title?.takeIf { it.isNotBlank() } ?: ""
+        kpId = kinopoiskId
+        onEpisodeProgressUpdate = episodeProgressCallback
         _uiState.update { it.copy(currentItemTitle = baseTitle, fileLoaded = false) }
         appliedFirstAudioOverride = false
 
@@ -213,6 +222,11 @@ class PlayerViewModel(
         }
 
         val currentUrl = resolvedUrls.getOrNull(startIndex) ?: resolvedUrls.firstOrNull().orEmpty()
+        val initialItem = mediaItems.getOrNull(startIndex)
+        if (initialItem != null) {
+            _uiState.update { it.copy(currentItemTitle = buildDisplayTitle(initialItem)) }
+        }
+
         val startPosition = if (startFromBeginning) 0L else prefs.getLong("pos_$currentUrl", 0L)
 
         player.setMediaItems(mediaItems, startIndex, startPosition)
@@ -299,6 +313,23 @@ class PlayerViewModel(
         val position = player.currentPosition
         prefs.edit().putLong("pos_$mediaId", position).apply()
         savedStateHandle["position"] = position
+        
+        // Update Collaps episode progress if available
+        val displayName = player.currentMediaItem?.mediaMetadata?.extras?.getString("display_name").orEmpty()
+        val se = parseSeasonEpisode(displayName)
+        if (se != null && baseTitle.isNotBlank()) {
+            // Extract season and episode from SxxEyy format
+            val match = Regex("S(\\d{1,2})E(\\d{1,3})").find(se)
+            if (match != null) {
+                val season = match.groupValues[1].toIntOrNull()
+                val episode = match.groupValues[2].toIntOrNull()
+                val duration = player.duration
+                val currentKpId = kpId
+                if (currentKpId != null && season != null && episode != null && onEpisodeProgressUpdate != null) {
+                    onEpisodeProgressUpdate!!(currentKpId, season, episode, position, duration)
+                }
+            }
+        }
     }
 
     fun getSelectableTracks(trackType: @C.TrackType Int): List<SelectableTrack> {

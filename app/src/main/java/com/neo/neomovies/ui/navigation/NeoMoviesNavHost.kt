@@ -73,7 +73,7 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
             WatchSelectorScreen(
                 sourceId = sourceId,
                 onBack = { navController.popBackStack() },
-                onWatch = { urls, names, startIndex, title ->
+                onWatch = { urls, names, startIndex, title, episodeProgressCallback ->
                     val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
                     val useCollapsHeaders =
                         com.neo.neomovies.ui.settings.SourceManager.getMode(context) ==
@@ -87,6 +87,9 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                                     names = names,
                                     startIndex = startIndex,
                                     title = title,
+                                    useCollapsHeaders = useCollapsHeaders,
+                                    kinopoiskId = null,
+                                    episodeProgressCallback = episodeProgressCallback,
                                 )
                             com.neo.neomovies.ui.settings.PlayerEngineMode.MPV ->
                                 com.neo.player.PlayerActivity.intent(
@@ -96,6 +99,8 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                                     startIndex = startIndex,
                                     title = title,
                                     useCollapsHeaders = useCollapsHeaders,
+                                    kinopoiskId = null,
+                                    episodeProgressCallback = episodeProgressCallback,
                                 )
                         }
                     context.startActivity(intent)

@@ -8,6 +8,8 @@ object TvPlayerArgs {
     var useExo: Boolean = false
     var useCollapsHeaders: Boolean = false
     var sourceId: String? = null
+    var kinopoiskId: Int? = null
+    var episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null
 
     fun set(
         urls: ArrayList<String>,
@@ -17,6 +19,8 @@ object TvPlayerArgs {
         useExo: Boolean,
         useCollapsHeaders: Boolean,
         sourceId: String?,
+        kinopoiskId: Int?,
+        episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)?,
     ) {
         this.urls = urls
         this.names = names
@@ -25,6 +29,8 @@ object TvPlayerArgs {
         this.useExo = useExo
         this.useCollapsHeaders = useCollapsHeaders
         this.sourceId = sourceId
+        this.kinopoiskId = kinopoiskId
+        this.episodeProgressCallback = episodeProgressCallback
     }
 
     fun clear() {
@@ -35,5 +41,7 @@ object TvPlayerArgs {
         useExo = false
         useCollapsHeaders = false
         sourceId = null
+        kinopoiskId = null
+        episodeProgressCallback = null
     }
 }

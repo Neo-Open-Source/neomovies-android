@@ -1,8 +1,5 @@
 package com.neo.tv.presentation.dashboard
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -104,22 +101,8 @@ fun TvDashboardScreen(
         var wasTopBarFocusRequestedBefore by rememberSaveable { mutableStateOf(false) }
         var topBarHeightPx: Int by rememberSaveable { mutableIntStateOf(0) }
 
-        val topBarYOffsetPx by animateIntAsState(
-            targetValue = if (isTopBarVisible) 0 else -topBarHeightPx,
-            animationSpec = tween(),
-            label = "",
-            finishedListener = {
-                if (it == -topBarHeightPx) {
-                    focusManager.moveFocus(FocusDirection.Down)
-                }
-            }
-        )
-
-        val navHostTopPaddingDp by animateDpAsState(
-            targetValue = if (isTopBarVisible) with(density) { topBarHeightPx.toDp() } else 0.dp,
-            animationSpec = tween(),
-            label = "",
-        )
+        val topBarYOffsetPx = if (isTopBarVisible) 0 else -topBarHeightPx
+        val navHostTopPaddingDp = if (isTopBarVisible) with(density) { topBarHeightPx.toDp() } else 0.dp
 
         LaunchedEffect(Unit) {
             if (!wasTopBarFocusRequestedBefore) {

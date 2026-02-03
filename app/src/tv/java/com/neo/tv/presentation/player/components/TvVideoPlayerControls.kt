@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +35,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.neo.neomovies.R
 import com.neo.player.PlayerViewModel
+import com.neo.player.PlayerEvents
 import com.neo.tv.presentation.common.TvActionButton
 
 @Composable
@@ -42,12 +45,14 @@ fun TvVideoPlayerControls(
     title: String?,
     useCollapsHeaders: Boolean,
     isControlsVisible: Boolean,
+    resizeMode: Int,
+    onToggleResizeMode: () -> Unit,
     onShowControls: () -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
-    var showAudioDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(player.isPlaying) }
 
     LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {
@@ -55,13 +60,12 @@ fun TvVideoPlayerControls(
         }
     }
 
-    if (showAudioDialog) {
-        TrackSelectionDialog(
-            title = stringResource(R.string.select_audio_track),
-            trackType = C.TRACK_TYPE_AUDIO,
-            viewModel = viewModel,
-            onDismiss = { showAudioDialog = false },
-        )
+    LaunchedEffect(viewModel) {
+        viewModel.eventsChannelFlow.collect { event ->
+            if (event is PlayerEvents.IsPlayingChanged) {
+                isPlaying = event.isPlaying
+            }
+        }
     }
 
     if (showSubtitleDialog) {
@@ -96,18 +100,30 @@ fun TvVideoPlayerControls(
             ) {
                 TvVideoPlayerControlsIcon(
                     modifier = Modifier.focusRequester(focusRequester),
-                    icon = if (player.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    isPlaying = player.isPlaying,
+                    icon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    isPlaying = isPlaying,
                     onClick = {
                         if (player.isPlaying) player.pause() else player.play()
                         onShowControls()
                     },
                 )
                 TvVideoPlayerControlsIcon(
-                    icon = Icons.Default.Audiotrack,
+                    icon = Icons.Default.SkipPrevious,
                     isPlaying = player.isPlaying,
                     onClick = {
-                        showAudioDialog = true
+                        if (player.hasPreviousMediaItem()) {
+                            player.seekToPreviousMediaItem()
+                        }
+                        onShowControls()
+                    },
+                )
+                TvVideoPlayerControlsIcon(
+                    icon = Icons.Default.SkipNext,
+                    isPlaying = player.isPlaying,
+                    onClick = {
+                        if (player.hasNextMediaItem()) {
+                            player.seekToNextMediaItem()
+                        }
                         onShowControls()
                     },
                 )
@@ -129,11 +145,20 @@ fun TvVideoPlayerControls(
                         },
                     )
                 }
+                TvVideoPlayerControlsIcon(
+                    icon = Icons.Default.AspectRatio,
+                    isPlaying = player.isPlaying,
+                    onClick = {
+                        onToggleResizeMode()
+                        onShowControls()
+                    },
+                )
             }
         },
         seeker = {
             TvVideoPlayerSeeker(
                 player = player,
+                isControlsVisible = isControlsVisible,
                 onShowControls = onShowControls,
             )
         },

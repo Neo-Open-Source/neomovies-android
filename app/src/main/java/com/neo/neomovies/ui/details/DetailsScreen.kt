@@ -65,6 +65,26 @@ fun DetailsScreen(
         val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
         !prefs.getString("token", null).isNullOrBlank()
     }
+    val kpId = state.details?.externalIds?.kp
+        ?: sourceId.removeSuffix(".0").removePrefix("kp_").toIntOrNull()
+    val watchedPrefs = remember { context.getSharedPreferences("collaps_watched", Context.MODE_PRIVATE) }
+    val watchedSummary = remember(kpId) {
+        if (kpId == null) return@remember null
+        val watchedCount = watchedPrefs.all
+            .filterKeys { it.startsWith("kp_${kpId}_s") && it.endsWith("_watched") }
+            .count { it.value == true }
+        val lastSeason = watchedPrefs.getInt("kp_${kpId}_last_season", -1)
+        val lastEpisode = watchedPrefs.getInt("kp_${kpId}_last_episode", -1)
+        val lastPosition = watchedPrefs.getLong("kp_${kpId}_last_position", 0L)
+        val lastDuration = watchedPrefs.getLong("kp_${kpId}_last_duration", 0L)
+        WatchedSummary(
+            watchedCount = watchedCount,
+            lastSeason = lastSeason,
+            lastEpisode = lastEpisode,
+            lastPosition = lastPosition,
+            lastDuration = lastDuration,
+        )
+    }
 
     val waitForFavorite = isAuthorized && state.details != null && (state.isFavoriteLoading || state.isFavorite == null)
 
@@ -164,6 +184,7 @@ fun DetailsScreen(
                                     )
                                     DetailsBody(
                                         details = details,
+                                        watchedSummary = watchedSummary,
                                         onWatch = onWatch,
                                         modifier = Modifier.weight(1f),
                                     )
@@ -186,6 +207,7 @@ fun DetailsScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 DetailsBody(
                                     details = details,
+                                    watchedSummary = watchedSummary,
                                     onWatch = onWatch,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -244,6 +266,7 @@ private fun Poster(
 @Composable
 private fun DetailsBody(
     details: com.neo.neomovies.data.network.dto.MediaDetailsDto,
+    watchedSummary: WatchedSummary?,
     onWatch: () -> Unit,
     modifier: Modifier,
 ) {
@@ -297,8 +320,37 @@ private fun DetailsBody(
         details.description?.takeIf { it.isNotBlank() }?.let {
             Text(text = it, style = MaterialTheme.typography.bodyLarge)
         }
+
+        watchedSummary?.let { summary ->
+            if (summary.watchedCount > 0) {
+                Text(
+                    text = "Просмотрено серий: ${summary.watchedCount}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (summary.lastSeason > 0 && summary.lastEpisode > 0) {
+                val progress = if (summary.lastDuration > 0) {
+                    ((summary.lastPosition.toFloat() / summary.lastDuration) * 100).toInt()
+                } else null
+                val progressSuffix = progress?.let { " • ${it}%" }.orEmpty()
+                Text(
+                    text = "Остановились: S%02dE%02d%s".format(summary.lastSeason, summary.lastEpisode, progressSuffix),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
+
+private data class WatchedSummary(
+    val watchedCount: Int,
+    val lastSeason: Int,
+    val lastEpisode: Int,
+    val lastPosition: Long,
+    val lastDuration: Long,
+)
 
 private enum class DetailsMode {
     Loading,

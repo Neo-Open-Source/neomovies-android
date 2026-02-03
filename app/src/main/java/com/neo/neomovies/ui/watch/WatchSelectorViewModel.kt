@@ -3,6 +3,7 @@ package com.neo.neomovies.ui.watch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
+import android.content.SharedPreferences
 import com.neo.neomovies.data.MoviesRepository
 import com.neo.neomovies.data.collaps.CollapsRepository
 import com.neo.neomovies.data.network.dto.MediaDetailsDto
@@ -60,6 +61,8 @@ data class Episode(
     val number: Int,
     val title: String,
     val voiceovers: List<Voiceover>,
+    val isWatched: Boolean = false,
+    val watchProgressMs: Long = 0L,
 )
 
 data class Season(
@@ -82,6 +85,10 @@ class WatchSelectorViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(WatchSelectorUiState())
     val state: StateFlow<WatchSelectorUiState> = _state
+    
+    private val watchedPrefs: SharedPreferences by lazy {
+        context.getSharedPreferences("collaps_watched", Context.MODE_PRIVATE)
+    }
 
     init {
         load()
@@ -173,10 +180,15 @@ class WatchSelectorViewModel(
                                     emptyList()
                                 }
 
+                            val watchedKey = "kp_${kpId}_s${s.season}_e${e.episode}"
+                            val watchProgressMs = watchedPrefs.getLong(watchedKey, 0L)
+                            val isWatched = watchedPrefs.getBoolean("${watchedKey}_watched", false)
                             Episode(
                                 number = e.episode,
                                 title = "${e.episode}",
                                 voiceovers = voiceovers,
+                                isWatched = isWatched,
+                                watchProgressMs = watchProgressMs,
                             )
                         },
                     )
@@ -286,6 +298,12 @@ class WatchSelectorViewModel(
                 resolvedMaxQuality = null,
             )
         }
+
+        val seasonNumber = _state.value.selectedSeasonNumber ?: return
+        val season = _state.value.tvSeasons?.firstOrNull { it.number == seasonNumber } ?: return
+        val episode = season.episodes.firstOrNull { it.number == episodeNumber } ?: return
+        val voiceover = episode.voiceovers.firstOrNull() ?: return
+        selectVoiceover(voiceover.id, voiceover.playbackUrl)
     }
 
     fun selectVoiceover(voiceoverId: String, playbackUrl: String) {
@@ -298,65 +316,76 @@ class WatchSelectorViewModel(
             _state.update { it.copy(isPlaybackResolving = true, error = null) }
             viewModelScope.launch {
                 try {
+                    val voiceIndex = voiceoverId.substringAfterLast(':').toIntOrNull() ?: 0
                     val seasons = collapsRepository.getSeasonsByKpId(kpId)
-                    val ep = seasons.firstOrNull { it.season == s }?.episodes?.firstOrNull { it.episode == e }
-                    if (ep == null) {
+                    val season = seasons.firstOrNull { it.season == s }
+                    val episodes = season?.episodes.orEmpty()
+                    val ep = episodes.firstOrNull { it.episode == e }
+                    if (ep == null || episodes.isEmpty()) {
                         _state.update { it.copy(isPlaybackResolving = false, error = "No episode") }
                         return@launch
                     }
 
-                    val mpd = ep.mpdUrl
-                    if (mpd != null) {
-                        val preferHlsForMpv =
-                            PlayerEngineManager.getMode(context) == PlayerEngineMode.MPV
+                    val preferHlsForMpv =
+                        PlayerEngineManager.getMode(context) == PlayerEngineMode.MPV
 
+                    val playlistUrls = episodes.mapNotNull { episode ->
+                        val mpd = episode.mpdUrl
                         val shouldUseHls =
                             preferHlsForMpv ||
-                                runCatching { collapsRepository.dashContainsAv1(mpd) }.getOrDefault(false)
+                                (mpd != null && runCatching { collapsRepository.dashContainsAv1(mpd) }.getOrDefault(false))
 
-                        val rewritten =
-                            if (shouldUseHls && !ep.hlsUrl.isNullOrBlank()) {
+                        when {
+                            shouldUseHls && !episode.hlsUrl.isNullOrBlank() -> {
                                 if (preferHlsForMpv) {
-                                    ep.hlsUrl
+                                    episode.hlsUrl
                                 } else {
-                                    collapsRepository.buildRewrittenHlsUri(kpId, s, e, ep.hlsUrl, ep.voices, ep.subtitles)
+                                    collapsRepository.buildRewrittenHlsUri(
+                                        kpId,
+                                        episode.season,
+                                        episode.episode,
+                                        episode.hlsUrl,
+                                        episode.voices,
+                                        episode.subtitles,
+                                    )
                                 }
-                            } else {
-                                collapsRepository.buildRewrittenMpdUri(kpId, s, e, mpd, ep.voices, ep.subtitles)
                             }
-
-                        _state.update {
-                            it.copy(
-                                isPlaybackResolving = false,
-                                selectedVoiceoverId = voiceoverId,
-                                selectedPlaybackUrl = rewritten,
-                                selectedQuality = null,
-                                resolvedMaxQuality = null,
-                            )
-                        }
-                    } else {
-                        if (!ep.hlsUrl.isNullOrBlank()) {
-                            val preferHlsForMpv =
-                                PlayerEngineManager.getMode(context) == PlayerEngineMode.MPV
-
-                            val rewritten =
-                                if (preferHlsForMpv) {
-                                    ep.hlsUrl
-                                } else {
-                                    collapsRepository.buildRewrittenHlsUri(kpId, s, e, ep.hlsUrl, ep.voices, ep.subtitles)
-                                }
-                            _state.update {
-                                it.copy(
-                                    isPlaybackResolving = false,
-                                    selectedVoiceoverId = voiceoverId,
-                                    selectedPlaybackUrl = rewritten,
-                                    selectedQuality = null,
-                                    resolvedMaxQuality = null,
+                            mpd != null ->
+                                collapsRepository.buildRewrittenMpdUri(
+                                    kpId,
+                                    episode.season,
+                                    episode.episode,
+                                    mpd,
+                                    episode.voices,
+                                    episode.subtitles,
                                 )
-                            }
-                        } else {
-                            _state.update { it.copy(isPlaybackResolving = false, error = "No mpd/hls url") }
+                            else -> null
                         }
+                    }
+
+                    if (playlistUrls.isEmpty()) {
+                        _state.update { it.copy(isPlaybackResolving = false, error = "No mpd/hls url") }
+                        return@launch
+                    }
+
+                    val playlistNames = episodes.map { episode ->
+                        val voiceTitle = episode.voices.getOrNull(voiceIndex) ?: "Collaps"
+                        "S%02dE%02d • %s".format(episode.season, episode.episode, voiceTitle)
+                    }
+
+                    val startIndex = episodes.indexOfFirst { it.episode == e }.coerceAtLeast(0)
+
+                    _state.update {
+                        it.copy(
+                            isPlaybackResolving = false,
+                            selectedVoiceoverId = voiceoverId,
+                            selectedPlaybackUrl = playlistUrls.getOrNull(startIndex),
+                            selectedPlaylistUrls = playlistUrls,
+                            selectedPlaylistNames = playlistNames,
+                            selectedPlaylistStartIndex = startIndex,
+                            selectedQuality = null,
+                            resolvedMaxQuality = null,
+                        )
                     }
                 } catch (t: Throwable) {
                     _state.update { it.copy(isPlaybackResolving = false, error = t.message ?: "") }
@@ -488,6 +517,29 @@ class WatchSelectorViewModel(
                 resolvingTorrent = false
             )
         }
+    }
+
+    fun updateEpisodeWatchProgress(kpId: Int?, season: Int?, episode: Int?, positionMs: Long, durationMs: Long) {
+        if (kpId == null || season == null || episode == null) return
+        val watchedKey = "kp_${kpId}_s${season}_e${episode}"
+        val watchedThresholdMs = if (durationMs > 0) {
+            val percentThreshold = (durationMs * 0.85f).toLong()
+            val creditsThreshold = durationMs - 180_000L
+            maxOf(percentThreshold, creditsThreshold)
+        } else {
+            Long.MAX_VALUE
+        }
+        watchedPrefs.edit()
+            .putLong(watchedKey, positionMs)
+            .putBoolean("${watchedKey}_watched", durationMs > 0 && positionMs >= watchedThresholdMs)
+            .putInt("kp_${kpId}_last_season", season)
+            .putInt("kp_${kpId}_last_episode", episode)
+            .putLong("kp_${kpId}_last_position", positionMs)
+            .putLong("kp_${kpId}_last_duration", durationMs)
+            .apply()
+        
+        // Refresh state to update UI
+        loadCollaps(kpId)
     }
 
     fun clearSelectedPlaybackUrl() {

@@ -34,6 +34,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.C
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.PlayerControlView
 import androidx.media3.ui.PlayerView
@@ -167,6 +168,7 @@ class PlayerActivity : BasePlayerActivity() {
         val subtitleButton = binding.playerView.findViewById<ImageButton>(R.id.btn_subtitle)
         val speedButton = binding.playerView.findViewById<ImageButton>(R.id.btn_speed)
         val qualityButton = binding.playerView.findViewById<ImageButton>(R.id.btn_quality)
+        val aspectRatioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_aspect_ratio)
 
         val useCollapsHeaders = intent.getBooleanExtra(EXTRA_USE_COLLAPS_HEADERS, false)
         qualityButton.isVisible = useCollapsHeaders
@@ -206,6 +208,22 @@ class PlayerActivity : BasePlayerActivity() {
                 .show(supportFragmentManager, "speedselectiondialog")
         }
 
+        aspectRatioButton.setOnClickListener {
+            binding.playerView.resizeMode =
+                if (binding.playerView.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+                    AspectRatioFrameLayout.RESIZE_MODE_FILL
+                } else {
+                    AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+        }
+
+        val pipButton = binding.playerView.findViewById<ImageButton>(R.id.btn_pip)
+        pipButton.setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                enterPictureInPictureMode(pipParams())
+            }
+        }
+
         playPauseButton.setOnClickListener {
             if (viewModel.player.playWhenReady) {
                 viewModel.playWhenReady = false
@@ -236,6 +254,14 @@ class PlayerActivity : BasePlayerActivity() {
                             if (useCollapsHeaders) {
                                 qualityButton.isEnabled = true
                                 qualityButton.imageAlpha = 255
+                            }
+                            // Show PiP button if supported
+                            val pipButton = binding.playerView.findViewById<ImageButton>(R.id.btn_pip)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && 
+                                packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+                                pipButton.visibility = View.VISIBLE
+                                pipButton.isEnabled = true
+                                pipButton.imageAlpha = 255
                             }
                         }
                     }
@@ -352,6 +378,7 @@ class PlayerActivity : BasePlayerActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE)
         val startFromBeginning = intent.getBooleanExtra(EXTRA_START_FROM_BEGINNING, false)
         val useExo = intent.getBooleanExtra(EXTRA_USE_EXO, false)
+        val kinopoiskId = intent.getIntExtra(EXTRA_KINOPOISK_ID, -1).takeIf { it > 0 }
 
         viewModel.setEngine(useExo)
         binding.playerView.player = viewModel.player
@@ -361,15 +388,18 @@ class PlayerActivity : BasePlayerActivity() {
             startIndex = startIndex,
             title = title,
             startFromBeginning = startFromBeginning,
+            kinopoiskId = kinopoiskId,
+            episodeProgressCallback = null, // Will be implemented with proper callback mechanism
         )
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.S &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             viewModel.player.isPlaying &&
-            !isControlsLocked
+            !isControlsLocked &&
+            isPipSupported
         ) {
             pictureInPicture()
         }
@@ -461,9 +491,10 @@ class PlayerActivity : BasePlayerActivity() {
         const val EXTRA_NAMES = "names"
         const val EXTRA_START_INDEX = "startIndex"
         const val EXTRA_TITLE = "title"
-        const val EXTRA_START_FROM_BEGINNING = "startFromBeginning"
-        const val EXTRA_USE_EXO = "useExo"
-        const val EXTRA_USE_COLLAPS_HEADERS = "useCollapsHeaders"
+        const val EXTRA_USE_EXO = "use_exo"
+        const val EXTRA_USE_COLLAPS_HEADERS = "use_collaps_headers"
+        const val EXTRA_START_FROM_BEGINNING = "start_from_beginning"
+        const val EXTRA_KINOPOISK_ID = "kinopoisk_id"
 
         fun intent(context: android.content.Context, url: String, title: String? = null, startFromBeginning: Boolean = false): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
@@ -471,7 +502,6 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, false)
-                putExtra(EXTRA_USE_COLLAPS_HEADERS, false)
             }
         }
 
@@ -481,49 +511,55 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, true)
-                putExtra(EXTRA_USE_COLLAPS_HEADERS, false)
             }
         }
 
         fun intent(
             context: android.content.Context,
-            urls: ArrayList<String>,
-            names: ArrayList<String> = arrayListOf(),
-            startIndex: Int,
+            urls: List<String>,
+            names: List<String>? = null,
+            startIndex: Int = 0,
             title: String? = null,
             startFromBeginning: Boolean = false,
+            useExo: Boolean = false,
             useCollapsHeaders: Boolean = false,
+            kinopoiskId: Int? = null,
+            episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
         ): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
                 putExtra(EXTRA_URL, urls.firstOrNull().orEmpty())
-                putStringArrayListExtra(EXTRA_URLS, urls)
-                putStringArrayListExtra(EXTRA_NAMES, names)
+                putStringArrayListExtra(EXTRA_URLS, ArrayList(urls))
+                putStringArrayListExtra(EXTRA_NAMES, ArrayList(names.orEmpty()))
                 putExtra(EXTRA_START_INDEX, startIndex)
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
-                putExtra(EXTRA_USE_EXO, false)
+                putExtra(EXTRA_USE_EXO, useExo)
                 putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
+                putExtra(EXTRA_KINOPOISK_ID, kinopoiskId)
             }
         }
 
         fun intentExo(
             context: android.content.Context,
-            urls: ArrayList<String>,
-            names: ArrayList<String> = arrayListOf(),
-            startIndex: Int,
+            urls: List<String>,
+            names: List<String>? = null,
+            startIndex: Int = 0,
             title: String? = null,
             startFromBeginning: Boolean = false,
             useCollapsHeaders: Boolean = false,
+            kinopoiskId: Int? = null,
+            episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
         ): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
                 putExtra(EXTRA_URL, urls.firstOrNull().orEmpty())
-                putStringArrayListExtra(EXTRA_URLS, urls)
-                putStringArrayListExtra(EXTRA_NAMES, names)
+                putStringArrayListExtra(EXTRA_URLS, ArrayList(urls))
+                putStringArrayListExtra(EXTRA_NAMES, ArrayList(names.orEmpty()))
                 putExtra(EXTRA_START_INDEX, startIndex)
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, true)
                 putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
+                putExtra(EXTRA_KINOPOISK_ID, kinopoiskId)
             }
         }
     }
