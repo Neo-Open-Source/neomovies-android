@@ -110,8 +110,11 @@
     <string name="player_time_format">%1$02d:%2$02d</string>
     <string name="player_debug_source_id">Источник: %1$s</string>
 
+    <string name="episode_watched">Просмотрено</string>
+    <string name="episode_progress">%1$d%%</string>
     <string name="player_controls_exit">Выход</string>
     <string name="player_controls_lock">Заблокировать управление</string>
+
     <string name="player_controls_play_pause">Воспроизведение / Пауза</string>
     <string name="player_controls_rewind">Перемотка назад</string>
     <string name="player_controls_fast_forward">Перемотка вперёд</string>
