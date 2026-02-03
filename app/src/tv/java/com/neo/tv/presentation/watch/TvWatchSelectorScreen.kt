@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -165,7 +164,7 @@ fun TvWatchSelectorScreen(
                                             ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
                                         } else 0
 
-                                        val supportingContent = if (episode.isWatched) {
+                                        val supportingContent: @Composable (() -> Unit)? = if (episode.isWatched) {
                                             { Text(text = stringResource(R.string.episode_watched)) }
                                         } else if (progressPercent > 0) {
                                             { Text(text = stringResource(R.string.episode_progress, progressPercent)) }
