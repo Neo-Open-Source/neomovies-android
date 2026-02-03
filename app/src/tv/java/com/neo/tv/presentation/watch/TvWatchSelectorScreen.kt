@@ -164,15 +164,20 @@ fun TvWatchSelectorScreen(
                                             ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
                                         } else 0
 
-                                        val supportingContent: @Composable (() -> Unit)? = if (episode.isWatched) {
-                                            { Text(text = stringResource(R.string.episode_watched)) }
-                                        } else if (progressPercent > 0) {
-                                            { Text(text = stringResource(R.string.episode_progress, progressPercent)) }
-                                        } else null
-
                                         ListItem(
-                                            headlineContent = { Text(text = "${stringResource(R.string.lumex_select_episode)} ${episode.number}") },
-                                            supportingContent = supportingContent,
+                                            headlineContent = {
+                                                Text(text = "${stringResource(R.string.lumex_select_episode)} ${episode.number}")
+                                            },
+                                            // Исправлено: передаем Composable лямбду напрямую
+                                            supportingContent = when {
+                                                episode.isWatched -> {
+                                                    { Text(text = stringResource(R.string.episode_watched)) }
+                                                }
+                                                progressPercent > 0 -> {
+                                                    { Text(text = stringResource(R.string.episode_progress, progressPercent)) }
+                                                }
+                                                else -> null
+                                            },
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clip(RoundedCornerShape(14.dp))
