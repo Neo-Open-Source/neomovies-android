@@ -177,6 +177,9 @@
     <string name="player_controls_pip">Picture in picture</string>
     <string name="player_controls_aspect_ratio">Aspect ratio</string>
 
+    <string name="episode_watched">Watched</string>
+    <string name="episode_progress">%1$d%%</string>
+
     <string name="picture_in_picture">Picture in picture</string>
     <string name="select_playback_speed">Select playback speed</string>
     <string name="select_audio_track">Select audio track</string>
