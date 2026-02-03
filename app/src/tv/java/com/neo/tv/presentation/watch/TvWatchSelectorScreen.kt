@@ -164,19 +164,19 @@ fun TvWatchSelectorScreen(
                                             ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
                                         } else 0
 
+                                        // Вычисляем текст поддержки вне ListItem
+                                        val supportingText = when {
+                                            episode.isWatched -> stringResource(R.string.episode_watched)
+                                            progressPercent > 0 -> stringResource(R.string.episode_progress, progressPercent)
+                                            else -> null
+                                        }
+
                                         ListItem(
                                             headlineContent = {
                                                 Text(text = "${stringResource(R.string.lumex_select_episode)} ${episode.number}")
                                             },
-                                            // Исправлено: передаем Composable лямбду напрямую
-                                            supportingContent = when {
-                                                episode.isWatched -> {
-                                                    { Text(text = stringResource(R.string.episode_watched)) }
-                                                }
-                                                progressPercent > 0 -> {
-                                                    { Text(text = stringResource(R.string.episode_progress, progressPercent)) }
-                                                }
-                                                else -> null
+                                            supportingContent = supportingText?.let { text ->
+                                                { Text(text = text) }
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
