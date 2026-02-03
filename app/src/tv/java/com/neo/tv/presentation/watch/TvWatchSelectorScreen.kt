@@ -1,7 +1,9 @@
 package com.neo.tv.presentation.watch
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,20 +22,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.neo.neomovies.R
@@ -48,6 +53,7 @@ import com.neo.tv.presentation.common.TvScreenScaffold
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun TvWatchSelectorScreen(
     sourceId: String,
@@ -135,15 +141,15 @@ fun TvWatchSelectorScreen(
                             val selectedSeason = state.selectedSeasonNumber
                             if (selectedSeason == null) {
                                 LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(minSize = 140.dp),
+                                    columns = GridCells.Adaptive(minSize = 180.dp),
                                     modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                                 ) {
                                     items(seasons) { season ->
                                         SeasonCard(
-                                            title = "${stringResource(R.string.lumex_select_season)} ${season.number}",
+                                            seasonNumber = season.number,
                                             posterUrl = poster,
                                             onClick = { viewModel.selectSeason(season.number) },
                                         )
@@ -155,7 +161,7 @@ fun TvWatchSelectorScreen(
 
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                                 ) {
                                     items(episodes) { episode ->
@@ -164,29 +170,17 @@ fun TvWatchSelectorScreen(
                                             ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
                                         } else 0
 
-                                        // Вычисляем текст поддержки вне ListItem
                                         val supportingText = when {
                                             episode.isWatched -> stringResource(R.string.episode_watched)
                                             progressPercent > 0 -> stringResource(R.string.episode_progress, progressPercent)
                                             else -> null
                                         }
 
-                                        ListItem(
-                                            headlineContent = {
-                                                Text(text = "${stringResource(R.string.lumex_select_episode)} ${episode.number}")
-                                            },
-                                            supportingContent = supportingText?.let { text ->
-                                                { Text(text = text) }
-                                            },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(14.dp))
-                                                .background(Color(0xFF1E1E1E))
-                                                .clickable { viewModel.selectEpisode(episode.number) }
-                                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                                            leadingContent = if (episode.isWatched) {
-                                                { Text(text = "✓") }
-                                            } else null,
+                                        EpisodeItem(
+                                            episodeNumber = episode.number,
+                                            isWatched = episode.isWatched,
+                                            supportingText = supportingText,
+                                            onClick = { viewModel.selectEpisode(episode.number) }
                                         )
                                     }
                                 }
@@ -210,36 +204,109 @@ fun TvWatchSelectorScreen(
 
 @Composable
 private fun SeasonCard(
-    title: String,
+    seasonNumber: Int,
     posterUrl: String?,
     onClick: () -> Unit,
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+    
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.68f),
+            .aspectRatio(0.7f)
+            .onFocusChanged { isFocused = it.isFocused }
+            .border(
+                width = if (isFocused) 4.dp else 0.dp,
+                color = if (isFocused) Color.White else Color.Transparent,
+                shape = RoundedCornerShape(16.dp)
+            ),
         shape = RoundedCornerShape(16.dp),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
                 model = posterUrl,
-                contentDescription = title,
+                contentDescription = "Сезон $seasonNumber",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.45f)),
+                    .background(Color.Black.copy(alpha = if (isFocused) 0.3f else 0.5f)),
             )
             Text(
-                text = title,
+                text = "${stringResource(R.string.lumex_select_season)} $seasonNumber",
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(12.dp),
+                    .padding(16.dp),
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun EpisodeItem(
+    episodeNumber: Int,
+    isWatched: Boolean,
+    supportingText: String?,
+    onClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (isFocused) Color(0xFF3A7BD5) else Color(0xFF1E1E1E)
+            )
+            .border(
+                width = if (isFocused) 3.dp else 0.dp,
+                color = if (isFocused) Color.White else Color.Transparent,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "${stringResource(R.string.lumex_select_episode)} $episodeNumber",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
+                
+                supportingText?.let { text ->
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+            
+            if (isWatched) {
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color(0xFF4CAF50),
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+            }
         }
     }
 }
