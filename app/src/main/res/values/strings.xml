@@ -100,6 +100,7 @@
     <string name="changes_version_label">Version: %1$s</string>
 
     <string-array name="changes_history">
+        <item>0.1.0-pre4||- New features have been added to the TV player, as well as fixes for the main player.\n- Added series switching to source Collaps.</item>
         <item>0.1.0-pre3||- Bug fixes and rewrite TV Player.</item>
         <item>0.1.0-pre2||- Add Collaps player and TV UI.</item>
         <item>0.1.0-pre1||- Initial prerelease\n- Add players: ExoPlayer and libMPV\n- Add TorrServer and made small improves.</item>
