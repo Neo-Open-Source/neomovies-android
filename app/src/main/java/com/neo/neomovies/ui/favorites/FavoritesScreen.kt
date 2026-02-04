@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.neo.neomovies.R
 import com.neo.neomovies.data.network.dto.MediaDto
 import com.neo.neomovies.ui.components.MediaPosterCard
@@ -148,4 +149,3 @@ private fun com.neo.neomovies.data.network.dto.FavoriteDto.toMediaDto(): MediaDt
         firstAirDate = null,
     )
 }
-import androidx.lifecycle.compose.LocalLifecycleOwner

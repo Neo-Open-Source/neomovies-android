@@ -180,6 +180,9 @@
     <string name="episode_watched">Watched</string>
     <string name="episode_progress">%1$d%%</string>
 
+    <string name="details_watched_count">Watched series: %1$d</string>
+    <string name="details_last_watched">Stopped at: S%1$02dE%2$02d%3$s</string>
+
     <string name="picture_in_picture">Picture in picture</string>
     <string name="select_playback_speed">Select playback speed</string>
     <string name="select_audio_track">Select audio track</string>

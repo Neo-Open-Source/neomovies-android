@@ -115,6 +115,9 @@
     <string name="player_controls_exit">Выход</string>
     <string name="player_controls_lock">Заблокировать управление</string>
 
+    <string name="details_watched_count">Просмотрено серий: %1$d</string>
+    <string name="details_last_watched">Остановились: S%1$02dE%2$02d%3$s</string>
+
     <string name="player_controls_play_pause">Воспроизведение / Пауза</string>
     <string name="player_controls_rewind">Перемотка назад</string>
     <string name="player_controls_fast_forward">Перемотка вперёд</string>

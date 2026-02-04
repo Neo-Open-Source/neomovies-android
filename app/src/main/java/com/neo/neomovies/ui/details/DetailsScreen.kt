@@ -305,7 +305,7 @@ private fun DetailsBody(
         watchedSummary?.let { summary ->
             if (summary.watchedCount > 0) {
                 Text(
-                    text = "Просмотрено серий: ${summary.watchedCount}",
+                    text = stringResource(R.string.details_watched_count, summary.watchedCount),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -316,7 +316,12 @@ private fun DetailsBody(
                 } else null
                 val progressSuffix = progress?.let { " • ${it}%" }.orEmpty()
                 Text(
-                    text = "Остановились: S%02dE%02d%s".format(summary.lastSeason, summary.lastEpisode, progressSuffix),
+                    text = stringResource(
+                        R.string.details_last_watched,
+                        summary.lastSeason,
+                        summary.lastEpisode,
+                        progressSuffix,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
