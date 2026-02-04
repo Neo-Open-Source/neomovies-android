@@ -103,6 +103,11 @@ class DetailsViewModel(
         }
     }
 
+    fun refreshWatchedSummary() {
+        val details = _state.value.details ?: return
+        _state.update { it.copy(watchedSummary = loadWatchedSummary(details)) }
+    }
+
     private fun refreshIsFavorite(details: MediaDetailsDto) {
         val (mediaId, suggestedType) = favoriteKey(details) ?: return
         _state.update { it.copy(isFavoriteLoading = true) }
