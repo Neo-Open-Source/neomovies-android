@@ -325,11 +325,11 @@ private fun DetailsBody(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            val progress = if (summary.lastDuration > 0) {
+                ((summary.lastPosition.toFloat() / summary.lastDuration) * 100).toInt()
+            } else null
+            val progressSuffix = progress?.let { " • ${it}%" }.orEmpty()
             if (summary.lastSeason > 0 && summary.lastEpisode > 0) {
-                val progress = if (summary.lastDuration > 0) {
-                    ((summary.lastPosition.toFloat() / summary.lastDuration) * 100).toInt()
-                } else null
-                val progressSuffix = progress?.let { " • ${it}%" }.orEmpty()
                 Text(
                     text = stringResource(
                         R.string.details_last_watched,
@@ -340,6 +340,30 @@ private fun DetailsBody(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            } else if (summary.lastPosition > 0) {
+                val positionMinutes = (summary.lastPosition / 60000).toInt()
+                if (summary.lastDuration > 0) {
+                    val durationMinutes = (summary.lastDuration / 60000).toInt()
+                    Text(
+                        text = stringResource(
+                            R.string.details_watch_progress_minutes,
+                            positionMinutes,
+                            durationMinutes,
+                            progressSuffix,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(
+                            R.string.details_watch_progress_position,
+                            positionMinutes,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

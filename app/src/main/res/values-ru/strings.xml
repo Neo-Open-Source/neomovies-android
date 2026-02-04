@@ -117,6 +117,8 @@
 
     <string name="details_watched_count">Просмотрено серий: %1$d</string>
     <string name="details_last_watched">Остановились: S%1$02dE%2$02d%3$s</string>
+    <string name="details_watch_progress_minutes">Остановились: %1$d/%2$d мин%3$s</string>
+    <string name="details_watch_progress_position">Остановились: %1$d мин</string>
 
     <string name="player_controls_play_pause">Воспроизведение / Пауза</string>
     <string name="player_controls_rewind">Перемотка назад</string>
