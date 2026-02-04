@@ -317,18 +317,23 @@ class PlayerViewModel(
         // Update Collaps episode progress if available
         val displayName = player.currentMediaItem?.mediaMetadata?.extras?.getString("display_name").orEmpty()
         val se = parseSeasonEpisode(displayName)
+        val currentKpId = kpId
+        val duration = player.duration
         if (se != null && baseTitle.isNotBlank()) {
             // Extract season and episode from SxxEyy format
             val match = Regex("S(\\d{1,2})E(\\d{1,3})").find(se)
             if (match != null) {
                 val season = match.groupValues[1].toIntOrNull()
                 val episode = match.groupValues[2].toIntOrNull()
-                val duration = player.duration
-                val currentKpId = kpId
                 if (currentKpId != null && season != null && episode != null && onEpisodeProgressUpdate != null) {
                     onEpisodeProgressUpdate!!(currentKpId, season, episode, position, duration)
+                    return
                 }
             }
+        }
+
+        if (currentKpId != null && onEpisodeProgressUpdate != null) {
+            onEpisodeProgressUpdate!!(currentKpId, 0, 0, position, duration)
         }
     }
 

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,7 @@ fun TvVideoPlayerControls(
     onShowControls: () -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
+    var showAudioDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(player.isPlaying) }
@@ -74,6 +76,15 @@ fun TvVideoPlayerControls(
             trackType = C.TRACK_TYPE_TEXT,
             viewModel = viewModel,
             onDismiss = { showSubtitleDialog = false },
+        )
+    }
+
+    if (showAudioDialog) {
+        TrackSelectionDialog(
+            title = stringResource(R.string.select_audio_track),
+            trackType = C.TRACK_TYPE_AUDIO,
+            viewModel = viewModel,
+            onDismiss = { showAudioDialog = false },
         )
     }
 
@@ -124,6 +135,14 @@ fun TvVideoPlayerControls(
                         if (player.hasNextMediaItem()) {
                             player.seekToNextMediaItem()
                         }
+                        onShowControls()
+                    },
+                )
+                TvVideoPlayerControlsIcon(
+                    icon = Icons.Default.VolumeUp,
+                    isPlaying = player.isPlaying,
+                    onClick = {
+                        showAudioDialog = true
                         onShowControls()
                     },
                 )
