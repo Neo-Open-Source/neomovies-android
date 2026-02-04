@@ -77,7 +77,7 @@ import org.koin.core.parameter.parametersOf
 fun WatchSelectorScreen(
     sourceId: String,
     onBack: () -> Unit,
-    onWatch: (ArrayList<String>, ArrayList<String>, Int, String?, (Int, Int, Int, Long, Long) -> Unit) -> Unit,
+    onWatch: (ArrayList<String>, ArrayList<String>, Int, String?, Int?, (Int, Int, Int, Long, Long) -> Unit) -> Unit,
 ) {
     val viewModel: WatchSelectorViewModel = koinViewModel(parameters = { parametersOf(sourceId) })
     val state = viewModel.state.collectAsState().value
@@ -112,11 +112,11 @@ fun WatchSelectorScreen(
         when {
             playlist != null && playlistNames != null && startIndex != null -> {
                 // Pass the episode progress callback to the player
-                onWatch(ArrayList(playlist), ArrayList(playlistNames), startIndex, effectiveTitle, episodeProgressCallback)
+                onWatch(ArrayList(playlist), ArrayList(playlistNames), startIndex, effectiveTitle, state.kinopoiskId, episodeProgressCallback)
                 viewModel.clearSelectedPlaybackUrl()
             }
             state.selectedPlaybackUrl != null -> {
-                onWatch(arrayListOf(state.selectedPlaybackUrl), arrayListOf(""), 0, effectiveTitle, episodeProgressCallback)
+                onWatch(arrayListOf(state.selectedPlaybackUrl), arrayListOf(""), 0, effectiveTitle, state.kinopoiskId, episodeProgressCallback)
                 viewModel.clearSelectedPlaybackUrl()
             }
         }
