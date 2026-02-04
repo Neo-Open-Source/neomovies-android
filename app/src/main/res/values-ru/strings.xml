@@ -76,10 +76,10 @@
     <string name="action_watch">Смотреть</string>
     <string name="action_selected">✓</string>
 
-    <string name="lumex_select_season">Выберите сезон</string>
-    <string name="lumex_select_episode">Выберите серию</string>
-    <string name="lumex_select_voiceover">Выберите озвучку</string>
-    <string name="lumex_select_quality">Выберите качество</string>
+    <string name="lumex_select_season">Сезон</string>
+    <string name="lumex_select_episode">Серия</string>
+    <string name="lumex_select_voiceover">Озвучка</string>
+    <string name="lumex_select_quality">Качество</string>
     <string name="lumex_no_data">Нет доступных источников</string>
 
     <string name="common_error">Ошибка</string>

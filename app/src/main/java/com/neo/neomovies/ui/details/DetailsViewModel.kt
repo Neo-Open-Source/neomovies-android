@@ -21,6 +21,15 @@ data class DetailsUiState(
     val favoriteMediaType: String? = null,
     val isFavoriteLoading: Boolean = false,
     val isFavoriteUpdating: Boolean = false,
+    val watchedSummary: WatchedSummary? = null,
+)
+
+data class WatchedSummary(
+    val watchedCount: Int,
+    val lastSeason: Int,
+    val lastEpisode: Int,
+    val lastPosition: Long,
+    val lastDuration: Long,
 )
 
 class DetailsViewModel(
@@ -46,12 +55,20 @@ class DetailsViewModel(
                 favoriteMediaType = null,
                 isFavoriteLoading = false,
                 isFavoriteUpdating = false,
+                watchedSummary = null,
             )
         }
         viewModelScope.launch {
             try {
                 val details = repository.getDetails(sourceId)
-                _state.update { it.copy(isLoading = false, error = null, details = details) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = null,
+                        details = details,
+                        watchedSummary = loadWatchedSummary(details),
+                    )
+                }
 
                 if (hasToken()) {
                     refreshIsFavorite(details)
@@ -143,5 +160,27 @@ class DetailsViewModel(
         val ctx = NeoMoviesApplication.instance.applicationContext
         val prefs = ctx.getSharedPreferences("auth", Context.MODE_PRIVATE)
         return !prefs.getString("token", null).isNullOrBlank()
+    }
+
+    private fun loadWatchedSummary(details: MediaDetailsDto): WatchedSummary? {
+        val kpId = details.externalIds?.kp?.toString()
+            ?: sourceId.removeSuffix(".0").removePrefix("kp_")
+        if (kpId.isBlank()) return null
+        val ctx = NeoMoviesApplication.instance.applicationContext
+        val watchedPrefs = ctx.getSharedPreferences("collaps_watched", Context.MODE_PRIVATE)
+        val watchedCount = watchedPrefs.all
+            .filterKeys { it.startsWith("kp_${kpId}_s") && it.endsWith("_watched") }
+            .count { it.value == true }
+        val lastSeason = watchedPrefs.getInt("kp_${kpId}_last_season", -1)
+        val lastEpisode = watchedPrefs.getInt("kp_${kpId}_last_episode", -1)
+        val lastPosition = watchedPrefs.getLong("kp_${kpId}_last_position", 0L)
+        val lastDuration = watchedPrefs.getLong("kp_${kpId}_last_duration", 0L)
+        return WatchedSummary(
+            watchedCount = watchedCount,
+            lastSeason = lastSeason,
+            lastEpisode = lastEpisode,
+            lastPosition = lastPosition,
+            lastDuration = lastDuration,
+        )
     }
 }

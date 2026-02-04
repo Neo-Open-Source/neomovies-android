@@ -366,10 +366,10 @@ fun WatchSelectorScreen(
                                             }
                                             val supportingContent: (@Composable () -> Unit)? = when {
                                                 ep.isWatched -> {
-                                                    { Text(text = "Watched", color = MaterialTheme.colorScheme.primary) }
+                                                    { Text(text = stringResource(R.string.episode_watched), color = MaterialTheme.colorScheme.primary) }
                                                 }
                                                 progressPercent != null -> {
-                                                    { Text(text = "${progressPercent}% watched", color = MaterialTheme.colorScheme.secondary) }
+                                                    { Text(text = stringResource(R.string.episode_progress, progressPercent), color = MaterialTheme.colorScheme.secondary) }
                                                 }
                                                 else -> null
                                             }

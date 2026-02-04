@@ -127,8 +127,12 @@ fun TvWatchSelectorScreen(
                 when (sourceMode) {
                     SourceMode.COLLAPS -> {
                         val seasons = state.tvSeasons.orEmpty()
+                        val posterId = state.details?.externalIds?.kp?.toString()
+                            ?: state.details?.id
+                            ?: state.details?.sourceId
                         val poster = resolveDetailsImageUrl(state.details?.backdropUrl)
                             ?: resolveDetailsImageUrl(state.details?.posterUrl)
+                            ?: resolveDetailsImageUrl(posterId)
 
                         if (seasons.isEmpty()) {
                             Box(

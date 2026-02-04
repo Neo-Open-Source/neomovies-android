@@ -132,10 +132,10 @@
     <string name="action_watch">Watch</string>
     <string name="action_selected">✓</string>
 
-    <string name="lumex_select_season">Select season</string>
-    <string name="lumex_select_episode">Select episode</string>
-    <string name="lumex_select_voiceover">Select voiceover</string>
-    <string name="lumex_select_quality">Select quality</string>
+    <string name="lumex_select_season">Season</string>
+    <string name="lumex_select_episode">Episode</string>
+    <string name="lumex_select_voiceover">Voiceover</string>
+    <string name="lumex_select_quality">Quality</string>
     <string name="lumex_no_data">No sources available</string>
 
     <string name="common_error">Error</string>

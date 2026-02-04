@@ -219,9 +219,7 @@ class PlayerActivity : BasePlayerActivity() {
 
         val pipButton = binding.playerView.findViewById<ImageButton>(R.id.btn_pip)
         pipButton.setOnClickListener {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                enterPictureInPictureMode(pipParams())
-            }
+            pictureInPicture()
         }
 
         playPauseButton.setOnClickListener {
@@ -257,8 +255,7 @@ class PlayerActivity : BasePlayerActivity() {
                             }
                             // Show PiP button if supported
                             val pipButton = binding.playerView.findViewById<ImageButton>(R.id.btn_pip)
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && 
-                                packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isPipSupported) {
                                 pipButton.visibility = View.VISIBLE
                                 pipButton.isEnabled = true
                                 pipButton.imageAlpha = 255
@@ -427,10 +424,14 @@ class PlayerActivity : BasePlayerActivity() {
 
         val aspectRatio =
             binding.playerView.player?.videoSize?.let {
-                Rational(
-                    it.width.coerceAtMost((it.height * 2.39f).toInt()),
-                    it.height.coerceAtMost((it.width * 2.39f).toInt()),
-                )
+                if (it.width > 0 && it.height > 0) {
+                    Rational(
+                        it.width.coerceAtMost((it.height * 2.39f).toInt()),
+                        it.height.coerceAtMost((it.width * 2.39f).toInt()),
+                    )
+                } else {
+                    null
+                }
             } ?: Rational(16, 9)
 
         val sourceRectHint =
@@ -468,15 +469,18 @@ class PlayerActivity : BasePlayerActivity() {
     }
 
     private fun pictureInPicture() {
-        if (!isPipSupported) return
-        runCatching { enterPictureInPictureMode(pipParams()) }
+        if (!isPipSupported || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val entered = runCatching { enterPictureInPictureMode(pipParams()) }
             .onFailure { t ->
                 Log.e("PlayerActivity", "Failed to enter Picture-in-Picture", t)
             }
+            .getOrDefault(false)
+        isEnteringPip = entered
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        isEnteringPip = false
         viewModel.isInPictureInPictureMode = isInPictureInPictureMode
 
         binding.playerView.useController = !isInPictureInPictureMode

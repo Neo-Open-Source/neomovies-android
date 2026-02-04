@@ -65,26 +65,7 @@ fun DetailsScreen(
         val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
         !prefs.getString("token", null).isNullOrBlank()
     }
-    val kpId = state.details?.externalIds?.kp
-        ?: sourceId.removeSuffix(".0").removePrefix("kp_").toIntOrNull()
-    val watchedPrefs = remember { context.getSharedPreferences("collaps_watched", Context.MODE_PRIVATE) }
-    val watchedSummary = remember(kpId) {
-        if (kpId == null) return@remember null
-        val watchedCount = watchedPrefs.all
-            .filterKeys { it.startsWith("kp_${kpId}_s") && it.endsWith("_watched") }
-            .count { it.value == true }
-        val lastSeason = watchedPrefs.getInt("kp_${kpId}_last_season", -1)
-        val lastEpisode = watchedPrefs.getInt("kp_${kpId}_last_episode", -1)
-        val lastPosition = watchedPrefs.getLong("kp_${kpId}_last_position", 0L)
-        val lastDuration = watchedPrefs.getLong("kp_${kpId}_last_duration", 0L)
-        WatchedSummary(
-            watchedCount = watchedCount,
-            lastSeason = lastSeason,
-            lastEpisode = lastEpisode,
-            lastPosition = lastPosition,
-            lastDuration = lastDuration,
-        )
-    }
+    val watchedSummary = state.watchedSummary
 
     val waitForFavorite = isAuthorized && state.details != null && (state.isFavoriteLoading || state.isFavorite == null)
 
@@ -343,14 +324,6 @@ private fun DetailsBody(
         }
     }
 }
-
-private data class WatchedSummary(
-    val watchedCount: Int,
-    val lastSeason: Int,
-    val lastEpisode: Int,
-    val lastPosition: Long,
-    val lastDuration: Long,
-)
 
 private enum class DetailsMode {
     Loading,

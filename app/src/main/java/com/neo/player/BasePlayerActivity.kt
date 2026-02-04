@@ -19,6 +19,7 @@ abstract class BasePlayerActivity : AppCompatActivity() {
 
     private lateinit var mediaSession: MediaSession
     private var wasPip: Boolean = false
+    protected var isEnteringPip: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +43,7 @@ abstract class BasePlayerActivity : AppCompatActivity() {
                 viewModel.player.playWhenReady = viewModel.playWhenReady
             }
         }
+        isEnteringPip = false
         hideSystemUI()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -50,7 +52,7 @@ abstract class BasePlayerActivity : AppCompatActivity() {
         super.onPause()
 
         if (managePlayerLifecycle) {
-            if (isInPictureInPictureMode) {
+            if (isInPictureInPictureMode || isEnteringPip) {
                 wasPip = true
             } else {
                 viewModel.player.playWhenReady = false
