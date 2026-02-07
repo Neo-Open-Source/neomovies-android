@@ -542,6 +542,12 @@ class WatchSelectorViewModel(
         loadCollaps(kpId)
     }
 
+    fun refreshCollapsProgress() {
+        val kpId = _state.value.kinopoiskId ?: return
+        if (SourceManager.getMode(context) != SourceMode.COLLAPS) return
+        loadCollaps(kpId)
+    }
+
     fun clearSelectedPlaybackUrl() {
         _state.update {
             it.copy(

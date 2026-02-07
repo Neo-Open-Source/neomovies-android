@@ -81,6 +81,10 @@ class PlayerViewModel(
         application.getSharedPreferences("player_progress", Context.MODE_PRIVATE)
     }
 
+    private val watchedPrefs by lazy {
+        application.getSharedPreferences("collaps_watched", Context.MODE_PRIVATE)
+    }
+
     // Shared AudioAttributes to avoid duplication
     private val audioAttributes = AudioAttributes.Builder()
         .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -325,16 +329,42 @@ class PlayerViewModel(
             if (match != null) {
                 val season = match.groupValues[1].toIntOrNull()
                 val episode = match.groupValues[2].toIntOrNull()
-                if (currentKpId != null && season != null && episode != null && onEpisodeProgressUpdate != null) {
-                    onEpisodeProgressUpdate!!(currentKpId, season, episode, position, duration)
+                if (currentKpId != null && season != null && episode != null) {
+                    val cb = onEpisodeProgressUpdate
+                    if (cb != null) {
+                        cb(currentKpId, season, episode, position, duration)
+                        return
+                    }
+                    persistEpisodeProgress(currentKpId, season, episode, position, duration)
                     return
                 }
             }
         }
 
-        if (currentKpId != null && onEpisodeProgressUpdate != null) {
-            onEpisodeProgressUpdate!!(currentKpId, 0, 0, position, duration)
+        val cb = onEpisodeProgressUpdate
+        if (currentKpId != null && cb != null) {
+            cb(currentKpId, 0, 0, position, duration)
         }
+    }
+
+    private fun persistEpisodeProgress(kpId: Int, season: Int, episode: Int, positionMs: Long, durationMs: Long) {
+        if (season <= 0 || episode <= 0) return
+        val watchedKey = "kp_${kpId}_s${season}_e${episode}"
+        val watchedThresholdMs = if (durationMs > 0) {
+            val percentThreshold = (durationMs * 0.85f).toLong()
+            val creditsThreshold = durationMs - 180_000L
+            maxOf(percentThreshold, creditsThreshold)
+        } else {
+            Long.MAX_VALUE
+        }
+        watchedPrefs.edit()
+            .putLong(watchedKey, positionMs)
+            .putBoolean("${watchedKey}_watched", durationMs > 0 && positionMs >= watchedThresholdMs)
+            .putInt("kp_${kpId}_last_season", season)
+            .putInt("kp_${kpId}_last_episode", episode)
+            .putLong("kp_${kpId}_last_position", positionMs)
+            .putLong("kp_${kpId}_last_duration", durationMs)
+            .apply()
     }
 
     fun getSelectableTracks(trackType: @C.TrackType Int): List<SelectableTrack> {
