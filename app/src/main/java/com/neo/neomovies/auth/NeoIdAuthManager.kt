@@ -21,6 +21,7 @@ private const val PREFS_NAME = "neo_id_prefs"
 private const val KEY_STATE = "neo_id_state"
 private const val AUTH_PREFS_NAME = "auth"
 private const val KEY_TOKEN = "token"
+private const val KEY_REFRESH_TOKEN = "refresh_token"
 private const val KEY_UNIFIED_ID = "unified_id"
 private const val KEY_EMAIL = "email"
 private const val KEY_DISPLAY_NAME = "display_name"
@@ -145,6 +146,8 @@ class NeoIdAuthManager(
 
     fun handleCallback(uri: Uri): NeoIdAuthResult {
         val token = uri.getQueryParameter("token")
+        val refreshToken = uri.getQueryParameter("refresh_token")
+            ?: uri.getQueryParameter("refreshToken")
         val error = uri.getQueryParameter("error")
         val stateParam = uri.getQueryParameter("state")
 
@@ -177,6 +180,7 @@ class NeoIdAuthManager(
 
         authPrefs.edit {
             putString(KEY_TOKEN, token)
+            if (!refreshToken.isNullOrBlank()) putString(KEY_REFRESH_TOKEN, refreshToken)
             if (!emailFromJwt.isNullOrBlank()) putString(KEY_EMAIL, emailFromJwt)
             if (!nameFromJwt.isNullOrBlank()) putString(KEY_DISPLAY_NAME, nameFromJwt)
         }
