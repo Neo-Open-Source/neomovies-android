@@ -344,6 +344,15 @@ class PlayerViewModel(
         val cb = onEpisodeProgressUpdate
         if (currentKpId != null && cb != null) {
             cb(currentKpId, 0, 0, position, duration)
+            return
+        }
+
+        // Persist generic (movie/non-episodic) progress by Kinopoisk ID so DetailsScreen can show resume.
+        if (currentKpId != null) {
+            watchedPrefs.edit()
+                .putLong("kp_${currentKpId}_last_position", position)
+                .putLong("kp_${currentKpId}_last_duration", duration)
+                .apply()
         }
     }
 
