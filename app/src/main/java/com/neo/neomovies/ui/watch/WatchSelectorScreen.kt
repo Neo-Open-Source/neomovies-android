@@ -41,11 +41,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.DisposableEffectResult
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.onDispose
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -100,7 +100,11 @@ fun WatchSelectorScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        return@DisposableEffect object : DisposableEffectResult {
+            override fun dispose() {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
     }
 
     var pendingMagnet by remember { mutableStateOf<String?>(null) }
