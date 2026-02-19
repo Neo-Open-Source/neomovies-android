@@ -15,3 +15,8 @@
 local.properties
 
 .env
+
+# Docs / VitePress generated artifacts
+site/node_modules/
+site/docs/.vitepress/cache/
+site/docs/.vitepress/dist/

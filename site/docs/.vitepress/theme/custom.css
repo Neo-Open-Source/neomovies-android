@@ -15,3 +15,69 @@
 .VPContent img {
   border-radius: var(--nm-radius-shot);
 }
+
+.nm-top-rights-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #c6f3ff;
+  border-bottom: 1px solid #9bdde9;
+  color: #0b2239;
+  text-align: center;
+}
+
+.nm-top-rights-flag {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.nm-top-rights-text {
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+:root {
+  --nm-rights-banner-height: 32px;
+}
+
+.nm-top-rights-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 110;
+}
+
+.VPNav {
+  top: var(--nm-rights-banner-height) !important;
+}
+
+.VPLocalNav {
+  top: calc(var(--vp-nav-height) + var(--nm-rights-banner-height)) !important;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --nm-rights-banner-height: 30px;
+  }
+
+  .nm-top-rights-banner {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  .nm-top-rights-flag {
+    width: 16px;
+    height: 16px;
+  }
+
+  .nm-top-rights-text {
+    font-size: 12px;
+  }
+}
