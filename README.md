@@ -1,3 +1,5 @@
+<img src="site/docs/public/rights-banner.svg" alt="Trans Rights are Human Rights banner" width="100%" />
+
 <div align="center">
 
 <img src=".github/assets/logo.png" width="120" height="120" style="border-radius: 24px;" />
@@ -5,11 +7,6 @@
 # NeoMovies
 
 ### Movies & series streaming client for Android
-
-<div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; background: #c6f3ff; border: 1px solid #9bdde9; border-radius: 8px; font-weight: 700;">
-  <img src="site/docs/public/pride_flag.avif" alt="Pride flag" width="18" height="18" style="border-radius: 3px;" />
-  <span>Trans Rights are Human Rights! We support trans people, femboys and all LGBTQIA+ people.</span>
-</div>
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/Neo-Open-Source/neomovies-android?color=black&label=Stable&logo=github)](https://github.com/Neo-Open-Source/neomovies-android/releases/latest/)
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/Neo-Open-Source/neomovies-android?include_prereleases&label=Preview&logo=github)](https://github.com/Neo-Open-Source/neomovies-android/releases/)
