@@ -33,7 +33,7 @@ const TopRightsBanner = defineComponent({
           h(
             'span',
             { class: 'nm-top-rights-text' },
-            'Trans Rights are Human Rights! We support femboys and all LGBTQIA+ people.'
+            'Trans Rights are Human Rights! We support trans people, femboys and all LGBTQIA+ people.'
           )
         ]
       )
