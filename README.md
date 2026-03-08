@@ -1,4 +1,4 @@
-<img src="site/docs/public/rights-banner.svg" alt="Trans Rights are Human Rights banner" width="100%" />
+<img src=".github/assets/rights-banner.svg" alt="Trans Rights are Human Rights banner" width="100%" />
 
 <div align="center">
 
@@ -10,7 +10,7 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/Neo-Open-Source/neomovies-android?color=black&label=Stable&logo=github)](https://github.com/Neo-Open-Source/neomovies-android/releases/latest/)
 [![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/Neo-Open-Source/neomovies-android?include_prereleases&label=Preview&logo=github)](https://github.com/Neo-Open-Source/neomovies-android/releases/)
-[![GitHub all releases](https://img.shields.io/github/downloads/Neo-Open-Source/neomovies-android/total?label=Downloads&logo=github)](https://app.neomovies.ru)
+[![GitHub all releases](https://img.shields.io/github/downloads/Neo-Open-Source/neomovies-android/total?label=Downloads&logo=github)](https://www.neomovies.ru)
 [![Telegram](https://img.shields.io/badge/Telegram-NeoMovies-blue?style=flat&logo=telegram)](https://t.me/neomovies_news)
 
 </div>

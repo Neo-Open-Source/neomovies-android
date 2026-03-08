@@ -10,7 +10,12 @@ const rootDir = path.resolve(__dirname, '..')
 const postsDir = path.join(rootDir, 'src', 'content', 'posts')
 const outputDir = path.join(rootDir, 'public', 'covers')
 const releasesApi = 'https://api.github.com/repos/Neo-Open-Source/neomovies-android/releases?per_page=20'
-const caFile = '/private/etc/ssl/cert.pem'
+const caCandidates = [
+  process.env.NODE_EXTRA_CA_CERTS,
+  '/private/etc/ssl/cert.pem',
+  '/etc/ssl/certs/ca-certificates.crt',
+  '/etc/ssl/cert.pem'
+].filter(Boolean)
 
 const palettes = [
   ['#34d399', '#2563eb'],
@@ -48,6 +53,11 @@ function wrapText(value) {
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
+}
+
+function resolveTlsOptions() {
+  const caFile = caCandidates.find((candidate) => fs.existsSync(candidate))
+  return caFile ? { ca: fs.readFileSync(caFile) } : {}
 }
 
 function generateCover(metadata) {
@@ -96,7 +106,7 @@ function fetchJson(url) {
   return new Promise((resolve, reject) => {
     const request = https.get(url, {
       headers: { 'User-Agent': 'neomovies-site' },
-      ca: fs.readFileSync(caFile)
+      ...resolveTlsOptions()
     }, (response) => {
       let raw = ''
       response.on('data', (chunk) => {
