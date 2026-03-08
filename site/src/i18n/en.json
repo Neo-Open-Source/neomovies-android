@@ -1,0 +1,180 @@
+{
+  "nav": {
+    "features": "Features",
+    "screens": "Screenshots",
+    "news": "Articles",
+    "download": "Download",
+    "github": "GitHub"
+  },
+  "hero": {
+    "kicker": "Android client",
+    "title": "NeoMovies for Android and Android TV.",
+    "text": "Open-source app for watching newly released movies and series available from public sources, without ads or artificial restrictions, with a convenient interface.",
+    "download": "Download APK",
+    "telegram": "Telegram"
+  },
+  "features": [
+    {
+      "title": "Two players",
+      "text": "Choose between ExoPlayer and MPV."
+    },
+    {
+      "title": "TorrServer",
+      "text": "Start torrent playback directly from the app."
+    },
+    {
+      "title": "Android 8+",
+      "text": "Works on both older and newer devices."
+    },
+    {
+      "title": "Phone and TV",
+      "text": "One codebase for mobile UI and Android TV."
+    }
+  ],
+  "about": {
+    "title": "About the app",
+    "text": "NeoMovies lets you watch new movies and series without ads or access limitations when they are publicly available, using a straightforward interface.",
+    "points": [
+      "Choose a source and start playback without extra steps",
+      "Player controls for touch screens and remote navigation",
+      "Sign in to keep favorites in sync."
+    ]
+  },
+  "news": {
+    "title": "Articles",
+    "action": "All articles",
+    "loadMore": "Load more"
+  },
+  "download": {
+    "title": "Download the app",
+    "text": "If you are not sure about your device architecture, use the universal APK.",
+    "stable": "Stable build",
+    "preview": "Preview builds"
+  },
+  "downloadPage": {
+    "label": "Download",
+    "title": "Download NeoMovies",
+    "text": "This page automatically uses the latest stable release. If there is no stable release, it falls back to the latest prerelease.",
+    "targetLabel": "Application type",
+    "mobileTab": "Android",
+    "tvTab": "Android TV",
+    "loading": "Loading release data...",
+    "stable": "Stable release",
+    "prerelease": "Prerelease",
+    "fallback": "Use the full GitHub releases page instead.",
+    "error": "Failed to load release data directly from GitHub.",
+    "mobileText": "APK files for the regular mobile build.",
+    "tvText": "APK files for the Android TV build.",
+    "downloadButton": "Download",
+    "selectorNote": "Choose universal if you are not sure about your device architecture.",
+    "noBuilds": "No builds",
+    "versionLabel": "Version:",
+    "dateLabel": "Date:",
+    "channelLabel": "Channel:",
+    "archUniversal": "universal APK",
+    "archArm64": "arm64-v8a APK",
+    "archArmv7": "armeabi-v7a APK",
+    "releaseNotes": "Release page",
+    "allReleases": "All releases"
+  },
+  "issue": {
+    "title": "Report a problem",
+    "text": "Describe the issue and a GitHub issue will open with the text prefilled.",
+    "placeholder": "What happened, on which device, and how can it be reproduced?",
+    "submit": "Open issue"
+  },
+  "footer": {
+    "sections": [
+      {
+        "title": "Download",
+        "links": [
+          {
+            "label": "Download NeoMovies",
+            "href": "/download"
+          },
+          {
+            "label": "Website",
+            "href": "https://www.neomovies.ru"
+          },
+          {
+            "label": "API docs",
+            "href": "https://api.neomovies.ru"
+          }
+        ]
+      },
+      {
+        "title": "Project",
+        "links": [
+          {
+            "label": "GitHub",
+            "href": "https://github.com/Neo-Open-Source"
+          },
+          {
+            "label": "GitLab",
+            "href": "https://gitlab.com/foxixus/neomovies-web"
+          },
+          {
+            "label": "Neo ID",
+            "href": "https://id.neomovies.ru"
+          }
+        ]
+      }
+    ],
+    "tags": [
+      {
+        "label": "Terms of Use",
+        "href": "/terms"
+      },
+      {
+        "label": "GitHub Issues",
+        "href": "https://github.com/Neo-Open-Source/neomovies-android/issues"
+      },
+      {
+        "label": "API",
+        "href": "https://api.neomovies.ru"
+      },
+      {
+        "label": "Neo ID",
+        "href": "https://id.neomovies.ru"
+      }
+    ],
+    "copyright": "Copyright © 2025-2026 Neo-Open-Source"
+  },
+  "terms": {
+    "label": "Terms of Use",
+    "title": "NeoMovies Terms of Service",
+    "version": "Please read the terms of use carefully",
+    "sections": [
+      {
+        "title": "1. General Provisions",
+        "text": "Use of the NeoMovies website is only possible with full agreement to the terms of this User Agreement. Disagreement with any provisions of the agreement means that you do not have the right to use this site and must stop accessing it."
+      },
+      {
+        "title": "2. Service Description",
+        "text": "NeoMovies provides access to information about movies and TV shows. Videos are played using third-party video hosting services and load balancers. The site does not store or distribute video files. We act exclusively as an intermediary between the user and external services.\n\nSome information about content availability may also be obtained from publicly available decentralized sources. The site does not distribute files and is not a participant in peer-to-peer networks."
+      },
+      {
+        "title": "3. Liability",
+        "text": "The site is not responsible for:",
+        "list": [
+          "the accuracy or legality of content provided by third-party players;",
+          "possible copyright violations by load balancers;",
+          "user actions related to viewing, downloading, or distributing content."
+        ],
+        "afterList": "All responsibility for using the content lies solely with the user. Use of third-party sources is at your own risk."
+      },
+      {
+        "title": "4. Registration and Personal Data",
+        "text": "The site collects only a minimal set of data: name, email, and password - exclusively for saving favorites. Passwords are encrypted and stored securely. We do not share your data with third parties and do not use it for marketing purposes.\n\nThe site's source code is fully open and available for review in a public repository, ensuring maximum transparency and the ability for independent security and data processing audits.\n\nThe user confirms that they are at least 16 years old or have received permission from a legal guardian."
+      },
+      {
+        "title": "5. Changes to the Agreement",
+        "text": "We reserve the right to make changes to this agreement. Continued use of the service after changes are made means your acceptance of the updated terms."
+      },
+      {
+        "title": "6. Final Provisions",
+        "text": "This agreement comes into effect from the moment you agree to its terms and is valid indefinitely.\n\nIf you do not agree with any provisions of this agreement, you must immediately stop using the service."
+      }
+    ]
+  }
+}

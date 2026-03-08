@@ -1,12 +1,24 @@
 {
   "name": "neomovies-site",
   "private": true,
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "vitepress dev docs",
-    "build": "vitepress build docs",
-    "preview": "vitepress preview docs"
+    "dev": "node scripts/generate-covers.mjs && vite",
+    "build": "node scripts/generate-covers.mjs && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@jetbrains/ring-ui-built": "^7.0.51",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
-    "vitepress": "^1.6.4"
+    "@mdx-js/react": "^3.1.0",
+    "@mdx-js/rollup": "^3.1.0",
+    "@vitejs/plugin-react": "^5.1.4",
+    "vite": "^7.3.1"
   }
 }

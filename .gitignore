@@ -16,7 +16,11 @@ local.properties
 
 .env
 
-# Docs / VitePress generated artifacts
+# Site / Vite / generated assets
 site/node_modules/
+site/dist/
+site/public/covers/
+
+# Legacy VitePress generated artifacts
 site/docs/.vitepress/cache/
 site/docs/.vitepress/dist/
