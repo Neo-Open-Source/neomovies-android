@@ -16,7 +16,7 @@ class JacredTorrentsRepository(
         return withContext(Dispatchers.IO) {
             val request =
                 Request.Builder()
-                    .url("https://jacred.xyz/api/v1.0/torrents?search=${java.net.URLEncoder.encode(query, "UTF-8")}&apikey=null")
+                    .url("https://jac-red.ru/api/v1.0/torrents?search=${java.net.URLEncoder.encode(query, "UTF-8")}&apikey=null")
                     .header(
                         "User-Agent",
                         "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
