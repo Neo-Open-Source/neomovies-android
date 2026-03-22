@@ -30,32 +30,18 @@ object DownloadUtil {
     fun getDatabaseProvider(context: Context): DatabaseProvider {
         val current = databaseProvider
         if (current != null) return current
-
         return synchronized(this) {
-            val secondCheck = databaseProvider
-            if (secondCheck != null) {
-                secondCheck
-            } else {
-                val instance = StandaloneDatabaseProvider(context.applicationContext)
-                databaseProvider = instance
-                instance
-            }
+            databaseProvider ?: StandaloneDatabaseProvider(context.applicationContext).also { databaseProvider = it }
         }
     }
 
     fun getDownloadCache(context: Context): SimpleCache {
         val current = downloadCache
         if (current != null) return current
-
         return synchronized(this) {
-            val secondCheck = downloadCache
-            if (secondCheck != null) {
-                secondCheck
-            } else {
+            downloadCache ?: run {
                 val cacheDir = File(context.applicationContext.filesDir, "downloads/cache")
-                val instance = SimpleCache(cacheDir, NoOpCacheEvictor(), getDatabaseProvider(context))
-                downloadCache = instance
-                instance
+                SimpleCache(cacheDir, NoOpCacheEvictor(), getDatabaseProvider(context)).also { downloadCache = it }
             }
         }
     }
@@ -63,20 +49,15 @@ object DownloadUtil {
     fun getDataSourceFactory(context: Context): CacheDataSource.Factory {
         val current = dataSourceFactory
         if (current != null) return current
-
         return synchronized(this) {
-            val secondCheck = dataSourceFactory
-            if (secondCheck != null) {
-                secondCheck
-            } else {
+            dataSourceFactory ?: run {
                 val httpFactory = DefaultHttpDataSource.Factory()
                 val upstream = DefaultDataSource.Factory(context.applicationContext, httpFactory)
-                val instance = CacheDataSource.Factory()
+                CacheDataSource.Factory()
                     .setCache(getDownloadCache(context))
                     .setUpstreamDataSourceFactory(upstream)
                     .setCacheWriteDataSinkFactory(null)
-                dataSourceFactory = instance
-                instance
+                    .also { dataSourceFactory = it }
             }
         }
     }
@@ -84,20 +65,15 @@ object DownloadUtil {
     fun getDownloadManager(context: Context): DownloadManager {
         val current = downloadManager
         if (current != null) return current
-
         return synchronized(this) {
-            val secondCheck = downloadManager
-            if (secondCheck != null) {
-                secondCheck
-            } else {
+            downloadManager ?: run {
                 val executor = Executors.newFixedThreadPool(2)
                 val manager = DownloadManager(
                     context.applicationContext,
                     getDatabaseProvider(context),
                     getDownloadCache(context),
                     getDataSourceFactory(context),
-                    executor, // downloadIndexExecutor
-                    executor  // actionFileUpgradeExecutor
+                    executor
                 )
                 manager.maxParallelDownloads = 2
                 downloadManager = manager
@@ -109,16 +85,8 @@ object DownloadUtil {
     fun getNotificationHelper(context: Context): DownloadNotificationHelper {
         val current = notificationHelper
         if (current != null) return current
-
         return synchronized(this) {
-            val secondCheck = notificationHelper
-            if (secondCheck != null) {
-                secondCheck
-            } else {
-                val instance = DownloadNotificationHelper(context.applicationContext, CHANNEL_ID)
-                notificationHelper = instance
-                instance
-            }
+            notificationHelper ?: DownloadNotificationHelper(context.applicationContext, CHANNEL_ID).also { notificationHelper = it }
         }
     }
 
@@ -136,8 +104,9 @@ object DownloadUtil {
             context.applicationContext,
             CHANNEL_ID,
             R.string.downloads_channel_name,
-            0,
-            NotificationUtil.IMPORTANCE_LOW
+            0, // descriptionResId
+            NotificationUtil.IMPORTANCE_LOW,
+            0  // p5: visibility
         )
     }
 
