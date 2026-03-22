@@ -28,59 +28,97 @@ object DownloadUtil {
     @Volatile private var notificationHelper: DownloadNotificationHelper? = null
 
     fun getDatabaseProvider(context: Context): DatabaseProvider {
-        return databaseProvider ?: synchronized(this) {
-            databaseProvider ?: StandaloneDatabaseProvider(context.applicationContext).also { databaseProvider = it }
+        val current = databaseProvider
+        if (current != null) return current
+
+        return synchronized(this) {
+            val secondCheck = databaseProvider
+            if (secondCheck != null) {
+                secondCheck
+            } else {
+                val instance = StandaloneDatabaseProvider(context.applicationContext)
+                databaseProvider = instance
+                instance
+            }
         }
     }
 
     fun getDownloadCache(context: Context): SimpleCache {
-        return downloadCache ?: synchronized(this) {
-            downloadCache ?: run {
+        val current = downloadCache
+        if (current != null) return current
+
+        return synchronized(this) {
+            val secondCheck = downloadCache
+            if (secondCheck != null) {
+                secondCheck
+            } else {
                 val cacheDir = File(context.applicationContext.filesDir, "downloads/cache")
-                SimpleCache(cacheDir, NoOpCacheEvictor(), getDatabaseProvider(context)).also {
-                    downloadCache = it
-                }
+                val instance = SimpleCache(cacheDir, NoOpCacheEvictor(), getDatabaseProvider(context))
+                downloadCache = instance
+                instance
             }
         }
     }
 
     fun getDataSourceFactory(context: Context): CacheDataSource.Factory {
-        return dataSourceFactory ?: synchronized(this) {
-            dataSourceFactory ?: run {
+        val current = dataSourceFactory
+        if (current != null) return current
+
+        return synchronized(this) {
+            val secondCheck = dataSourceFactory
+            if (secondCheck != null) {
+                secondCheck
+            } else {
                 val httpFactory = DefaultHttpDataSource.Factory()
                 val upstream = DefaultDataSource.Factory(context.applicationContext, httpFactory)
-                CacheDataSource.Factory()
+                val instance = CacheDataSource.Factory()
                     .setCache(getDownloadCache(context))
                     .setUpstreamDataSourceFactory(upstream)
                     .setCacheWriteDataSinkFactory(null)
-                    .also { dataSourceFactory = it }
+                dataSourceFactory = instance
+                instance
             }
         }
     }
 
     fun getDownloadManager(context: Context): DownloadManager {
-        return downloadManager ?: synchronized(this) {
-            downloadManager ?: run {
+        val current = downloadManager
+        if (current != null) return current
+
+        return synchronized(this) {
+            val secondCheck = downloadManager
+            if (secondCheck != null) {
+                secondCheck
+            } else {
                 val executor = Executors.newFixedThreadPool(2)
-                
-                DownloadManager(
+                val manager = DownloadManager(
                     context.applicationContext,
                     getDatabaseProvider(context),
                     getDownloadCache(context),
                     getDataSourceFactory(context),
                     executor, // downloadIndexExecutor
                     executor  // actionFileUpgradeExecutor
-                ).also { manager ->
-                    manager.maxParallelDownloads = 2
-                    downloadManager = manager
-                }
+                )
+                manager.maxParallelDownloads = 2
+                downloadManager = manager
+                manager
             }
         }
     }
 
     fun getNotificationHelper(context: Context): DownloadNotificationHelper {
-        return notificationHelper ?: synchronized(this) {
-            notificationHelper ?: DownloadNotificationHelper(context.applicationContext, CHANNEL_ID).also { notificationHelper = it }
+        val current = notificationHelper
+        if (current != null) return current
+
+        return synchronized(this) {
+            val secondCheck = notificationHelper
+            if (secondCheck != null) {
+                secondCheck
+            } else {
+                val instance = DownloadNotificationHelper(context.applicationContext, CHANNEL_ID)
+                notificationHelper = instance
+                instance
+            }
         }
     }
 
@@ -90,7 +128,7 @@ object DownloadUtil {
             android.R.drawable.stat_sys_download,
             null,
             null,
-            downloads,
+            downloads
         )
 
     fun ensureChannel(context: Context) {
@@ -99,7 +137,7 @@ object DownloadUtil {
             CHANNEL_ID,
             R.string.downloads_channel_name,
             0,
-            NotificationUtil.IMPORTANCE_LOW,
+            NotificationUtil.IMPORTANCE_LOW
         )
     }
 
