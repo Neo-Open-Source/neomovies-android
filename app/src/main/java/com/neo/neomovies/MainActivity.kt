@@ -179,6 +179,7 @@ fun NeoMoviesApp(
                 animatedComposable(NavRoute.Downloads.route) {
                     val context = LocalContext.current
                     DownloadsScreen(
+                        onBack = { navController.popBackStack() },
                         onOpenDetails = { sourceId ->
                             if (sourceId.isNotBlank()) {
                                 navController.navigate(NavRoute.Details.create(sourceId))

@@ -19,6 +19,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.media3.exoplayer.offline.DownloadService
+import com.neo.neomovies.downloads.NeoDownloadService
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,6 +52,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,6 +81,25 @@ fun DetailsScreen(
     var offlineEntries by remember { mutableStateOf(emptyList<com.neo.neomovies.downloads.DownloadEntry>()) }
     val watchedSummary = state.watchedSummary
     val lifecycleOwner = LocalLifecycleOwner.current
+    var hasDownloads by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.details) {
+        val details = state.details
+        if (details != null) {
+            val kpId = details.externalIds?.kp?.toString()
+                ?: sourceId.removeSuffix(.0).removePrefix(kp_)
+            val key = if (kpId.isNotBlank()) kp_ else 
+            if (key.isNotBlank()) {
+                val store = DownloadsStore(context)
+                hasDownloads = store.loadAll().any { it.showId == key }
+            } else {
+                hasDownloads = false
+            }
+        } else {
+            hasDownloads = false
+        }
+    }
+
 
     LaunchedEffect(offline) {
         if (offline) {
@@ -86,6 +109,30 @@ fun DetailsScreen(
             val key = if (normalized.startsWith("kp_")) normalized else "kp_$normalized"
             offlineEntries = list.filter { it.showId == key || it.showTitle == key }
         }
+    val downloadKey = remember(state.details) {
+        val details = state.details
+        val kpId = details?.externalIds?.kp?.toString()
+            ?: sourceId.removeSuffix(".0").removePrefix("kp_")
+        kpId.takeIf { it.isNotBlank() }?.let { "kp_${it}" }
+    }
+
+    val deleteDownloads = {
+        val key = downloadKey
+        if (key != null) {
+            val store = DownloadsStore(context)
+            val items = store.loadAll().filter { it.showId == key }
+            items.forEach { entry ->
+                store.removeById(entry.id)
+                DownloadService.sendRemoveDownload(
+                    context,
+                    NeoDownloadService::class.java,
+                    entry.id,
+                    false,
+                )
+            }
+        }
+    }
+
     }
 
     if (offline) {
@@ -257,6 +304,9 @@ fun DetailsScreen(
                                         details = details,
                                         watchedSummary = watchedSummary,
                                         onWatch = onWatch,
+                                        onDownload = onWatch,
+                                        onDeleteDownload = deleteDownloads,
+                                        hasDownloads = hasDownloads,
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -280,7 +330,10 @@ fun DetailsScreen(
                                     details = details,
                                     watchedSummary = watchedSummary,
                                     onWatch = onWatch,
-                                    modifier = Modifier
+                                        onDownload = onWatch,
+                                        onDeleteDownload = deleteDownloads,
+                                        hasDownloads = hasDownloads,
+                                        modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp),
                                 )
@@ -339,6 +392,9 @@ private fun DetailsBody(
     details: com.neo.neomovies.data.network.dto.MediaDetailsDto,
     watchedSummary: WatchedSummary?,
     onWatch: () -> Unit,
+    onDownload: () -> Unit,
+    onDeleteDownload: () -> Unit,
+    hasDownloads: Boolean,
     modifier: Modifier,
 ) {
     Column(
@@ -373,6 +429,14 @@ private fun DetailsBody(
             )
             Button(onClick = onWatch) {
                 Text(text = stringResource(R.string.action_watch))
+            }
+            IconButton(onClick = onDownload) {
+                Icon(imageVector = Icons.Filled.Download, contentDescription = null)
+            }
+            if (hasDownloads) {
+                IconButton(onClick = onDeleteDownload) {
+                    Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+                }
             }
         }
         if (meta.isNotBlank()) {
