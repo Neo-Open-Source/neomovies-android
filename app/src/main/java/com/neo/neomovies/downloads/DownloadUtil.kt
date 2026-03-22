@@ -11,7 +11,6 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.exoplayer.offline.DefaultDownloaderFactory
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
@@ -63,13 +62,12 @@ object DownloadUtil {
     fun getDownloadManager(context: Context): DownloadManager {
         return downloadManager ?: synchronized(this) {
             downloadManager ?: run {
-                val downloaderFactory = DefaultDownloaderFactory(getDataSourceFactory(context))
                 val executor = Executors.newFixedThreadPool(2)
                 DownloadManager(
                     context,
                     getDatabaseProvider(context),
                     getDownloadCache(context),
-                    downloaderFactory,
+                    getDataSourceFactory(context),
                     executor,
                 ).also { manager ->
                     manager.maxParallelDownloads = 2
@@ -88,12 +86,12 @@ object DownloadUtil {
 
     fun buildProgressNotification(context: Context, downloads: List<Download>) =
         getNotificationHelper(context).buildProgressNotification(
-            context,
-            android.R.drawable.stat_sys_download,
-            null,
-            null,
-            downloads,
-            0,
+            context = context,
+            smallIcon = android.R.drawable.stat_sys_download,
+            contentIntent = null,
+            message = null,
+            downloads = downloads,
+            notMetRequirements = 0,
         )
 
     fun ensureChannel(context: Context) {
