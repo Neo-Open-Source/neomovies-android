@@ -4,6 +4,7 @@ import android.app.Notification
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
+import androidx.media3.exoplayer.scheduler.Scheduler
 
 class NeoDownloadService : DownloadService(
     1,
@@ -19,7 +20,7 @@ class NeoDownloadService : DownloadService(
 
     override fun getScheduler(): Scheduler? = null
 
-    override fun getForegroundNotification(downloads: List<Download>): Notification {
+    override fun getForegroundNotification(downloads: MutableList<Download>, notMetRequirements: Int): Notification {
         return DownloadUtil.buildProgressNotification(this, downloads)
     }
 }

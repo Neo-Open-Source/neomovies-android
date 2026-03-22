@@ -16,7 +16,7 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.scheduler.PlatformScheduler
+import java.util.concurrent.Executors
 import com.neo.neomovies.R
 import java.io.File
 
@@ -26,7 +26,7 @@ object DownloadUtil {
     @Volatile private var downloadManager: DownloadManager? = null
     @Volatile private var downloadCache: SimpleCache? = null
     @Volatile private var databaseProvider: DatabaseProvider? = null
-    @Volatile private var dataSourceFactory: DataSource.Factory? = null
+    @Volatile private var dataSourceFactory: CacheDataSource.Factory? = null
     @Volatile private var notificationHelper: DownloadNotificationHelper? = null
 
     fun getDatabaseProvider(context: Context): DatabaseProvider {
@@ -46,7 +46,7 @@ object DownloadUtil {
         }
     }
 
-    fun getDataSourceFactory(context: Context): DataSource.Factory {
+    fun getDataSourceFactory(context: Context): CacheDataSource.Factory {
         return dataSourceFactory ?: synchronized(this) {
             dataSourceFactory ?: run {
                 val httpFactory = DefaultHttpDataSource.Factory()
@@ -64,12 +64,18 @@ object DownloadUtil {
         return downloadManager ?: synchronized(this) {
             downloadManager ?: run {
                 val downloaderFactory = DefaultDownloaderFactory(getDataSourceFactory(context))
-                DownloadManager(context, getDatabaseProvider(context), getDownloadCache(context), downloaderFactory)
-                    .also { manager ->
-                        manager.maxParallelDownloads = 2
-                        manager.addListener(object : DownloadManager.Listener {})
-                        downloadManager = manager
-                    }
+                val executor = Executors.newFixedThreadPool(2)
+                DownloadManager(
+                    context,
+                    getDatabaseProvider(context),
+                    getDownloadCache(context),
+                    downloaderFactory,
+                    executor,
+                ).also { manager ->
+                    manager.maxParallelDownloads = 2
+                    manager.addListener(object : DownloadManager.Listener {})
+                    downloadManager = manager
+                }
             }
         }
     }
@@ -87,13 +93,14 @@ object DownloadUtil {
             null,
             null,
             downloads,
+            0,
         )
 
     fun ensureChannel(context: Context) {
         NotificationUtil.createNotificationChannel(
             context,
             CHANNEL_ID,
-            context.getString(R.string.downloads_channel_name),
+            R.string.downloads_channel_name,
             NotificationUtil.IMPORTANCE_LOW,
         )
     }

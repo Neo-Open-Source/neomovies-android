@@ -51,9 +51,9 @@ fun HomeScreen(
     val offline by OfflineManager.isOffline().collectAsStateWithLifecycleCompat()
 
     if (offline) {
+        val context = androidx.compose.ui.platform.LocalContext.current
         DownloadsScreen(
             onDeleteEntry = { entry ->
-                val context = androidx.compose.ui.platform.LocalContext.current
                 com.neo.neomovies.downloads.DownloadsStore(context).removeById(entry.id)
                 androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
                     context,
@@ -63,7 +63,6 @@ fun HomeScreen(
                 )
             },
             onPlayEntry = { entry ->
-                val context = androidx.compose.ui.platform.LocalContext.current
                 val url = entry.originalUrl ?: return@DownloadsScreen
                 val kpId = entry.showId
                     ?.removePrefix("kp_")

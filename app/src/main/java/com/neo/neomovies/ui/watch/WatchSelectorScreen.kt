@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -82,7 +83,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun WatchSelectorScreen(
     sourceId: String,
@@ -491,7 +492,7 @@ fun WatchSelectorScreen(
                                             scope.launch {
                                                 val variants = viewModel.fetchHlsVariants(hls)
                                                 if (variants.isEmpty()) {
-                                                    qualityError = stringResource(R.string.download_quality_unavailable)
+                                                    qualityError = context.getString(R.string.download_quality_unavailable)
                                                 }
                                                 qualityVariants = variants
                                                 qualityLoading = false
@@ -529,7 +530,7 @@ fun WatchSelectorScreen(
                                             onClick = {
                                                 val firstUrl = seasons.firstOrNull()?.episodes?.firstOrNull()?.voiceovers?.firstOrNull()?.playbackUrl
                                                 if (firstUrl == null || !firstUrl.endsWith(".m3u8", true)) {
-                                                    qualityError = stringResource(R.string.download_quality_unavailable)
+                                                    qualityError = context.getString(R.string.download_quality_unavailable)
                                                     showQualityPicker = true
                                                     return@Button
                                                 }
@@ -541,7 +542,7 @@ fun WatchSelectorScreen(
                                                 scope.launch {
                                                     val variants = viewModel.fetchHlsVariants(firstUrl)
                                                     if (variants.isEmpty()) {
-                                                        qualityError = stringResource(R.string.download_quality_unavailable)
+                                                        qualityError = context.getString(R.string.download_quality_unavailable)
                                                     }
                                                     qualityVariants = variants
                                                     qualityLoading = false
@@ -588,7 +589,7 @@ fun WatchSelectorScreen(
                                                 onClick = {
                                                     val firstUrl = episodes.firstOrNull()?.voiceovers?.firstOrNull()?.playbackUrl
                                                     if (firstUrl == null || !firstUrl.endsWith(".m3u8", true)) {
-                                                        qualityError = stringResource(R.string.download_quality_unavailable)
+                                                        qualityError = context.getString(R.string.download_quality_unavailable)
                                                         showQualityPicker = true
                                                         return@Button
                                                     }
@@ -600,7 +601,7 @@ fun WatchSelectorScreen(
                                                     scope.launch {
                                                         val variants = viewModel.fetchHlsVariants(firstUrl)
                                                         if (variants.isEmpty()) {
-                                                            qualityError = stringResource(R.string.download_quality_unavailable)
+                                                            qualityError = context.getString(R.string.download_quality_unavailable)
                                                         }
                                                         qualityVariants = variants
                                                         qualityLoading = false

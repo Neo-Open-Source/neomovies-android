@@ -14,7 +14,22 @@
           "line": 0
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/.gitignore",
+      "selection": {
+        "end": {
+          "column": 19,
+          "index": 259,
+          "line": 19
+        },
+        "start": {
+          "column": 19,
+          "index": 259,
+          "line": 19
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/.github/workflows/build-apk.yml"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/.gitignore"
 }

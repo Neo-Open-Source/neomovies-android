@@ -177,6 +177,7 @@ fun NeoMoviesApp(
                 }
 
                 animatedComposable(NavRoute.Downloads.route) {
+                    val context = LocalContext.current
                     DownloadsScreen(
                         onOpenDetails = { sourceId ->
                             if (sourceId.isNotBlank()) {
@@ -184,7 +185,6 @@ fun NeoMoviesApp(
                             }
                         },
                         onDeleteEntry = { entry ->
-                            val context = LocalContext.current
                             com.neo.neomovies.downloads.DownloadsStore(context).removeById(entry.id)
                             androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
                                 context,
@@ -194,7 +194,6 @@ fun NeoMoviesApp(
                             )
                         },
                         onPlayEntry = { entry ->
-                            val context = LocalContext.current
                             val url = entry.originalUrl ?: return@DownloadsScreen
                             val kpId = entry.showId
                                 ?.removePrefix("kp_")
