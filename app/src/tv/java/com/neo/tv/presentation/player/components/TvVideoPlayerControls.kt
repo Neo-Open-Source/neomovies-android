@@ -35,6 +35,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.neo.neomovies.R
+import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import com.neo.player.PlayerViewModel
 import com.neo.player.PlayerEvents
 import com.neo.tv.presentation.common.TvActionButton
@@ -191,7 +192,8 @@ private fun TrackSelectionDialog(
     viewModel: PlayerViewModel,
     onDismiss: () -> Unit,
 ) {
-    val tracks = remember(trackType) { viewModel.getSelectableTracks(trackType) }
+    val tracksVersion by viewModel.tracksVersion.collectAsStateWithLifecycleCompat()
+    val tracks = remember(trackType, tracksVersion) { viewModel.getSelectableTracks(trackType) }
     val selectedIndex = tracks.indexOfFirst { it.isSelected }
 
     Dialog(onDismissRequest = onDismiss) {

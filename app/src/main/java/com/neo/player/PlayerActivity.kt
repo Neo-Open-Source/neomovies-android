@@ -75,6 +75,7 @@ class PlayerActivity : BasePlayerActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE)
         val startFromBeginning = intent.getBooleanExtra(EXTRA_START_FROM_BEGINNING, false)
         val useExo = intent.getBooleanExtra(EXTRA_USE_EXO, false)
+        val kinopoiskId = intent.getIntExtra(EXTRA_KINOPOISK_ID, -1).takeIf { it > 0 }
 
         binding = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -322,6 +323,7 @@ class PlayerActivity : BasePlayerActivity() {
             startIndex = startIndex,
             title = title,
             startFromBeginning = startFromBeginning,
+            kinopoiskId = kinopoiskId,
         )
         hideSystemUI()
 
@@ -402,7 +404,18 @@ class PlayerActivity : BasePlayerActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        viewModel.updatePlaybackProgress()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewModel.updatePlaybackProgress()
+    }
+
     private fun finishPlayback() {
+        viewModel.updatePlaybackProgress()
         runCatching {
             viewModel.player.clearVideoSurfaceView(binding.playerView.videoSurfaceView as SurfaceView)
         }

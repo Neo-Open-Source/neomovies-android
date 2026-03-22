@@ -69,6 +69,9 @@ class PlayerViewModel(
     private val _uiState = MutableStateFlow(UiState(currentItemTitle = "", fileLoaded = false))
     val uiState = _uiState.asStateFlow()
 
+    private val _tracksVersion = MutableStateFlow(0)
+    val tracksVersion = _tracksVersion.asStateFlow()
+
     private val eventsChannel = Channel<PlayerEvents>(capacity = Channel.BUFFERED)
     val eventsChannelFlow = eventsChannel.receiveAsFlow()
 
@@ -261,6 +264,7 @@ class PlayerViewModel(
     }
 
     override fun onTracksChanged(tracks: Tracks) {
+        _tracksVersion.update { it + 1 }
         if (!useExo || !forceFirstAudioTrack || appliedFirstAudioOverride) return
 
         val group = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO } ?: return
@@ -320,7 +324,13 @@ class PlayerViewModel(
         
         // Update Collaps episode progress if available
         val displayName = player.currentMediaItem?.mediaMetadata?.extras?.getString("display_name").orEmpty()
+        val displayTitle = buildDisplayTitle(player.currentMediaItem)
         val se = parseSeasonEpisode(displayName)
+            ?: parseSeasonEpisode(displayTitle)
+            ?: run {
+                val url = player.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
+                parseSeasonEpisode(url.substringAfterLast('/').substringAfterLast('\\'))
+            }
         val currentKpId = kpId
         val duration = player.duration
         if (se != null && baseTitle.isNotBlank()) {

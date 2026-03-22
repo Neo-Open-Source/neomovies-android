@@ -25,6 +25,8 @@
             android:screenOrientation="sensorLandscape"
             android:launchMode="singleTask"
             android:autoRemoveFromRecents="true"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
             android:theme="@style/Theme.NeoMovies" />
         <activity
             android:name=".MainActivity"
