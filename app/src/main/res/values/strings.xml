@@ -231,4 +231,9 @@
     <string name="category_popular">Popular</string>
     <string name="category_top_movies">Top movies</string>
     <string name="category_top_tv">Top TV</string>
+
+    <string name="download_progress_details">Downloading: %1$d%% %2$s</string>
+    <string name="downloaded_label">Downloaded</string>
+    <string name="download_in_progress">Downloading %1$d%%</string>
+    <string name="download_complete">Downloaded</string>
 </resources>

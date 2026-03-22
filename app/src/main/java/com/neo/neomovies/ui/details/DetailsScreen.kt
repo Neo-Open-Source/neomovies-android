@@ -63,6 +63,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.neo.neomovies.data.network.OfflineManager
 import com.neo.neomovies.downloads.DownloadsStore
 import com.neo.neomovies.downloads.DownloadType
+import org.koin.core.context.GlobalContext
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberCoroutineScope
+import com.neo.neomovies.downloads.DownloadUtil
+import com.neo.neomovies.downloads.DownloadActions
+import com.neo.neomovies.data.collaps.CollapsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +96,14 @@ fun DetailsScreen(
         kpId.takeIf { it.isNotBlank() }?.let { "kp_${it}" }
     }
 
+    val scope = rememberCoroutineScope()
+    val collapsRepository = remember { GlobalContext.get().koin.get<CollapsRepository>() }
+    val downloadManager = remember { DownloadUtil.getDownloadManager(context) }
+    var activeDownloads by remember { mutableStateOf(downloadManager.currentDownloads) }
+    var downloadProgress by remember { mutableStateOf<Int?>(null) }
+    var downloadActiveCount by remember { mutableStateOf(0) }
+    var downloadTotalCount by remember { mutableStateOf(0) }
+
     val deleteDownloads = {
         val key = downloadKey
         if (key != null) {
@@ -105,14 +120,36 @@ fun DetailsScreen(
             }
         }
     }
+    LaunchedEffect(downloadManager) {
+        while (true) {
+            activeDownloads = downloadManager.currentDownloads
+            delay(1000)
+        }
+    }
 
-    LaunchedEffect(state.details) {
+
+    LaunchedEffect(state.details, activeDownloads) {
         val key = downloadKey
         if (key != null) {
             val store = DownloadsStore(context)
-            hasDownloads = store.loadAll().any { it.showId == key }
+            val items = store.loadAll().filter { it.showId == key }
+            hasDownloads = items.isNotEmpty()
+            downloadTotalCount = items.size
+
+            val matching = activeDownloads.filter { it.request.id.startsWith(key) }
+            downloadActiveCount = matching.size
+            if (matching.isNotEmpty()) {
+                val percents = matching.mapNotNull { it.percentDownloaded.takeIf { p -> p >= 0f } }
+                val avg = if (percents.isNotEmpty()) percents.average() else 0.0
+                downloadProgress = avg.toInt()
+            } else {
+                downloadProgress = null
+            }
         } else {
             hasDownloads = false
+            downloadProgress = null
+            downloadActiveCount = 0
+            downloadTotalCount = 0
         }
     }
 
@@ -125,6 +162,60 @@ fun DetailsScreen(
                 list.filter { it.showId == key || it.showTitle == key }
             } else {
                 emptyList()
+            }
+        }
+    }
+
+    val onDownloadAll: () -> Unit = {
+        val details = state.details ?: return@onDownloadAll
+        val kpId = details.externalIds?.kp
+            ?: sourceId.removeSuffix(".0").removePrefix("kp_").toIntOrNull()
+            ?: return@onDownloadAll
+        val showId = "kp_$kpId"
+        val showTitle = details.title ?: details.name ?: ""
+        val posterUrl = normalizeImageUrl(details.posterUrl ?: details.backdropUrl ?: kpId.toString())
+
+        scope.launch {
+            val seasons = collapsRepository.getSeasonsByKpId(kpId)
+            if (seasons.isNotEmpty()) {
+                seasons.forEach { season ->
+                    season.episodes.forEach { ep ->
+                        val url = ep.hlsUrl ?: ep.mpdUrl
+                        if (!url.isNullOrBlank()) {
+                            val downloadId = "${showId}_s${season.season}_e${ep.episode}_collaps"
+                            DownloadActions.enqueueCollapsDownload(
+                                context = context,
+                                downloadId = downloadId,
+                                url = url,
+                                details = details,
+                                title = "S${season.season}E${ep.episode}",
+                                posterUrl = posterUrl,
+                                showId = showId,
+                                showTitle = showTitle,
+                                seasonNumber = season.season,
+                                episodeNumber = ep.episode,
+                            )
+                        }
+                    }
+                }
+            } else {
+                val movie = collapsRepository.getMovieByKpId(kpId)
+                val url = movie?.hlsUrl ?: movie?.mpdUrl
+                if (!url.isNullOrBlank()) {
+                    val downloadId = "${showId}_movie_${System.currentTimeMillis()}"
+                    DownloadActions.enqueueCollapsDownload(
+                        context = context,
+                        downloadId = downloadId,
+                        url = url,
+                        details = details,
+                        title = showTitle,
+                        posterUrl = posterUrl,
+                        showId = showId,
+                        showTitle = showTitle,
+                        seasonNumber = null,
+                        episodeNumber = null,
+                    )
+                }
             }
         }
     }
@@ -300,9 +391,12 @@ fun DetailsScreen(
                                         details = details,
                                         watchedSummary = watchedSummary,
                                         onWatch = onWatch,
-                                        onDownload = onWatch,
+                                        onDownload = onDownloadAll,
                                         onDeleteDownload = deleteDownloads,
                                         hasDownloads = hasDownloads,
+                                        downloadProgress = downloadProgress,
+                                        downloadActiveCount = downloadActiveCount,
+                                        downloadTotalCount = downloadTotalCount,
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -326,9 +420,12 @@ fun DetailsScreen(
                                     details = details,
                                     watchedSummary = watchedSummary,
                                     onWatch = onWatch,
-                                    onDownload = onWatch,
+                                    onDownload = onDownloadAll,
                                     onDeleteDownload = deleteDownloads,
                                     hasDownloads = hasDownloads,
+                                    downloadProgress = downloadProgress,
+                                    downloadActiveCount = downloadActiveCount,
+                                    downloadTotalCount = downloadTotalCount,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp),
@@ -391,6 +488,9 @@ private fun DetailsBody(
     onDownload: () -> Unit,
     onDeleteDownload: () -> Unit,
     hasDownloads: Boolean,
+    downloadProgress: Int?,
+    downloadActiveCount: Int,
+    downloadTotalCount: Int,
     modifier: Modifier,
 ) {
     Column(
@@ -437,6 +537,25 @@ private fun DetailsBody(
         }
         if (meta.isNotBlank()) {
             Text(text = meta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        if (downloadProgress != null) {
+            val countSuffix = if (downloadTotalCount > 0) {
+                "(${downloadActiveCount}/${downloadTotalCount})"
+            } else {
+                ""
+            }
+            Text(
+                text = stringResource(R.string.download_progress_details, downloadProgress, countSuffix),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (hasDownloads) {
+            Text(
+                text = stringResource(R.string.downloaded_label),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         val genres = details.genres?.mapNotNull { it.name?.trim() }?.filter { it.isNotBlank() }.orEmpty()

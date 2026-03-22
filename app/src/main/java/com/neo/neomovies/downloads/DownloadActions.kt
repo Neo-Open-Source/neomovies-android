@@ -22,6 +22,9 @@ object DownloadActions {
         seasonNumber: Int?,
         episodeNumber: Int?,
     ) {
+        if (url.isBlank()) return
+        DownloadUtil.ensureChannel(context)
+
         val mimeType = when {
             url.endsWith(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8
             url.endsWith(".mpd", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
@@ -69,6 +72,7 @@ object DownloadActions {
         posterUrl: String?,
     ): Boolean {
         if (!hasEnoughSpace(context, fileSize)) return false
+        DownloadUtil.ensureChannel(context)
         val request = DownloadUtil.buildRequest(downloadId, Uri.parse(fileUrl))
         DownloadService.sendAddDownload(
             context,

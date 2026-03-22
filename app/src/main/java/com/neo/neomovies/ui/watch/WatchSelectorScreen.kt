@@ -40,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.media3.exoplayer.offline.Download
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Checkbox
@@ -73,6 +74,7 @@ import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
 import com.neo.neomovies.ui.util.normalizeImageUrl
 import com.neo.neomovies.downloads.DownloadActions
+import com.neo.neomovies.downloads.DownloadUtil
 import com.neo.neomovies.downloads.MediaNameParser
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
@@ -121,6 +123,15 @@ fun WatchSelectorScreen(
     var dialogBusy by remember { mutableStateOf(false) }
 
     var showAutostartDialog by remember { mutableStateOf(false) }
+    val downloadManager = remember { DownloadUtil.getDownloadManager(context) }
+    var activeDownloads by remember { mutableStateOf(downloadManager.currentDownloads) }
+    val downloadMap = remember(activeDownloads) { activeDownloads.associateBy { it.request.id } }
+    LaunchedEffect(Unit) {
+        while (true) {
+            activeDownloads = downloadManager.currentDownloads
+            delay(1000L)
+        }
+    }
     var showQualityPicker by remember { mutableStateOf(false) }
     var pendingQualityEpisodes by remember { mutableStateOf<List<Episode>>(emptyList()) }
     var pendingQualitySeason by remember { mutableStateOf<Int?>(null) }
@@ -450,247 +461,154 @@ fun WatchSelectorScreen(
 
                             val seasons = state.tvSeasons.orEmpty()
                             val movie = state.movie
-                            if (seasons.isEmpty() && movie != null) {
-                                val poster = resolveDetailsImageUrl(state.details?.backdropUrl)
-                                    ?: resolveDetailsImageUrl(state.details?.posterUrl)
-                                Column(
-                                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            val url = state.selectedPlaybackUrl ?: return@Button
-                                            val kpId = state.kinopoiskId
-                                            val showId = kpId?.let { "kp_$it" }
-                                            val title = effectiveTitle ?: "Movie"
-                                            DownloadActions.enqueueCollapsDownload(
-                                                context = context,
-                                                downloadId = "${showId}_movie_${System.currentTimeMillis()}",
-                                                url = url,
-                                                details = state.details,
-                                                title = title,
-                                                posterUrl = poster,
-                                                showId = showId,
-                                                showTitle = effectiveTitle,
-                                                seasonNumber = null,
-                                                episodeNumber = null,
-                                            )
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Text(text = stringResource(R.string.download_movie))
-                                    }
-                                    Button(
-                                        onClick = {
-                                            val hls = movie.hlsUrl ?: return@Button
-                                            showQualityPicker = true
-                                            pendingQualityEpisodes = emptyList()
-                                            pendingQualitySeason = null
-                                            qualityLoading = true
-                                            qualityError = null
-                                            scope.launch {
-                                                val variants = viewModel.fetchHlsVariants(hls)
-                                                if (variants.isEmpty()) {
-                                                    qualityError = context.getString(R.string.download_quality_unavailable)
-                                                }
-                                                qualityVariants = variants
-                                                qualityLoading = false
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Text(text = stringResource(R.string.download_movie_quality))
-                                    }
-                                }
-                            } else if (seasons.isEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(text = stringResource(R.string.lumex_no_data))
-                                }
-                            } else {
-                                val selectedSeason = state.selectedSeasonNumber
+                            val selectedSeason = state.selectedSeasonNumber
 
-                                if (selectedSeason == null) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Button(
-                                            onClick = { seasons.forEach { downloadEpisodes(it.episodes, it.number) } },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(12.dp),
+                            when {
+                                seasons.isNotEmpty() -> {
+                                    if (selectedSeason == null) {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Adaptive(minSize = 140.dp),
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
                                         ) {
-                                            Text(text = stringResource(R.string.download_series))
-                                        }
-                                        Button(
-                                            onClick = {
-                                                val firstUrl = seasons.firstOrNull()?.episodes?.firstOrNull()?.voiceovers?.firstOrNull()?.playbackUrl
-                                                if (firstUrl == null || !firstUrl.endsWith(".m3u8", true)) {
-                                                    qualityError = context.getString(R.string.download_quality_unavailable)
-                                                    showQualityPicker = true
-                                                    return@Button
-                                                }
-                                                showQualityPicker = true
-                                                pendingQualityEpisodes = seasons.flatMap { it.episodes }
-                                                pendingQualitySeason = -1
-                                                qualityLoading = true
-                                                qualityError = null
-                                                scope.launch {
-                                                    val variants = viewModel.fetchHlsVariants(firstUrl)
-                                                    if (variants.isEmpty()) {
-                                                        qualityError = context.getString(R.string.download_quality_unavailable)
-                                                    }
-                                                    qualityVariants = variants
-                                                    qualityLoading = false
-                                                }
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(12.dp),
-                                        ) {
-                                            Text(text = stringResource(R.string.download_series_quality))
-                                        }
-                                    }
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Adaptive(minSize = 140.dp),
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    ) {
-                                        items(seasons) { s ->
-                                            SeasonCard(
-                                                title = "Season ${s.number}",
-                                                posterUrl = poster,
-                                                onClick = { viewModel.selectSeason(s.number) },
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    val season = seasons.firstOrNull { it.number == selectedSeason }
-                                    val episodes = season?.episodes.orEmpty()
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                                    ) {
-                                        item {
-                                            Button(
-                                                onClick = { downloadEpisodes(episodes, selectedSeason) },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(12.dp),
-                                            ) {
-                                                Text(text = stringResource(R.string.download_season))
+                                            items(seasons) { s ->
+                                                SeasonCard(
+                                                    title = "Season ${s.number}",
+                                                    posterUrl = poster,
+                                                    onClick = { viewModel.selectSeason(s.number) },
+                                                    onDownload = { downloadEpisodes(s.episodes, s.number) },
+                                                )
                                             }
-                                            Button(
-                                                onClick = {
-                                                    val firstUrl = episodes.firstOrNull()?.voiceovers?.firstOrNull()?.playbackUrl
-                                                    if (firstUrl == null || !firstUrl.endsWith(".m3u8", true)) {
-                                                        qualityError = context.getString(R.string.download_quality_unavailable)
-                                                        showQualityPicker = true
-                                                        return@Button
-                                                    }
-                                                    showQualityPicker = true
-                                                    pendingQualityEpisodes = episodes
-                                                    pendingQualitySeason = selectedSeason
-                                                    qualityLoading = true
-                                                    qualityError = null
-                                                    scope.launch {
-                                                        val variants = viewModel.fetchHlsVariants(firstUrl)
-                                                        if (variants.isEmpty()) {
-                                                            qualityError = context.getString(R.string.download_quality_unavailable)
+                                        }
+                                    } else {
+                                        val season = seasons.firstOrNull { it.number == selectedSeason }
+                                        val episodes = season?.episodes.orEmpty()
+                                        LazyColumn(
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                        ) {
+                                            items(episodes) { ep ->
+                                                val progressPercent = if (ep.watchProgressMs > 0) {
+                                                    val duration = 45 * 60 * 1000L // Approximate duration in ms
+                                                    ((ep.watchProgressMs.toFloat() / duration) * 100).toInt()
+                                                } else {
+                                                    null
+                                                }
+
+                                                val voice = ep.voiceovers.firstOrNull()
+                                                val kpId = state.kinopoiskId
+                                                val showId = kpId?.let { "kp_${it}" }
+                                                val downloadId = voice?.let { "${showId}_s${selectedSeason}_e${ep.number}_${it.id}" }
+                                                val download = downloadId?.let { downloadMap[it] }
+                                                val downloadPercent = download?.percentDownloaded?.takeIf { it >= 0f }?.toInt()
+                                                val downloadState = download?.state
+
+                                                val supportingContent: (@Composable () -> Unit)? =
+                                                    if (ep.isWatched || progressPercent != null || download != null) {
+                                                        {
+                                                            Column {
+                                                                if (ep.isWatched) {
+                                                                    Text(text = stringResource(R.string.episode_watched), color = MaterialTheme.colorScheme.primary)
+                                                                } else if (progressPercent != null) {
+                                                                    Text(text = stringResource(R.string.episode_progress, progressPercent), color = MaterialTheme.colorScheme.secondary)
+                                                                }
+                                                                if (downloadState == Download.STATE_COMPLETED) {
+                                                                    Text(text = stringResource(R.string.download_complete), color = MaterialTheme.colorScheme.primary)
+                                                                } else if (downloadPercent != null) {
+                                                                    Text(text = stringResource(R.string.download_in_progress, downloadPercent), color = MaterialTheme.colorScheme.secondary)
+                                                                }
+                                                            }
                                                         }
-                                                        qualityVariants = variants
-                                                        qualityLoading = false
+                                                    } else {
+                                                        null
                                                     }
-                                                },
+
+                                                val leadingContent: (@Composable () -> Unit)? = when {
+                                                    ep.isWatched -> {
+                                                        {
+                                                            Icon(
+                                                                imageVector = Icons.Default.CheckCircle,
+                                                                contentDescription = "Watched",
+                                                                tint = MaterialTheme.colorScheme.primary,
+                                                                modifier = Modifier.size(24.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                    progressPercent != null -> {
+                                                        {
+                                                            CircularProgressIndicator(
+                                                                progress = { ep.watchProgressMs.toFloat() / (45 * 60 * 1000L) },
+                                                                modifier = Modifier.size(24.dp),
+                                                                strokeWidth = 2.dp,
+                                                                color = MaterialTheme.colorScheme.secondary
+                                                            )
+                                                        }
+                                                    }
+                                                    else -> null
+                                                }
+                                                ListItem(
+                                                    headlineContent = { Text(text = "Episode ${ep.number}") },
+                                                    supportingContent = supportingContent,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .clickable { viewModel.selectEpisode(ep.number) }
+                                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                                    leadingContent = leadingContent,
+                                                    trailingContent = {
+                                                        IconButton(
+                                                            enabled = download == null || downloadState == Download.STATE_FAILED,
+                                                            onClick = {
+                                                                val playbackUrl = voice?.playbackUrl ?: return@IconButton
+                                                                val showTitle = effectiveTitle
+                                                                val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
+                                                                    ?: resolveDetailsImageUrl(state.details?.backdropUrl)
+                                                                val resolvedDownloadId = downloadId
+                                                                    ?: "${showId}_s${selectedSeason}_e${ep.number}_${voice?.id ?: "default"}"
+                                                                DownloadActions.enqueueCollapsDownload(
+                                                                    context = context,
+                                                                    downloadId = resolvedDownloadId,
+                                                                    url = playbackUrl,
+                                                                    details = state.details,
+                                                                    title = "S${selectedSeason}E${ep.number}",
+                                                                    posterUrl = posterUrl,
+                                                                    showId = showId,
+                                                                    showTitle = showTitle,
+                                                                    seasonNumber = selectedSeason,
+                                                                    episodeNumber = ep.number,
+                                                                )
+                                                            },
+                                                        ) {
+                                                            Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                                                        }
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                movie != null -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        movie.voiceovers.forEach { voice ->
+                                            Button(
+                                                onClick = { viewModel.selectVoiceover(voice.id, voice.playbackUrl) },
                                                 modifier = Modifier.fillMaxWidth(),
                                                 shape = RoundedCornerShape(12.dp),
                                             ) {
-                                                Text(text = stringResource(R.string.download_season_quality))
+                                                Text(text = voice.title)
                                             }
                                         }
-                                        items(episodes) { ep ->
-                                            val progressPercent = if (ep.watchProgressMs > 0) {
-                                                val duration = 45 * 60 * 1000L // Approximate duration in ms
-                                                ((ep.watchProgressMs.toFloat() / duration) * 100).toInt()
-                                            } else {
-                                                null
-                                            }
-                                            val supportingContent: (@Composable () -> Unit)? = when {
-                                                ep.isWatched -> {
-                                                    { Text(text = stringResource(R.string.episode_watched), color = MaterialTheme.colorScheme.primary) }
-                                                }
-                                                progressPercent != null -> {
-                                                    { Text(text = stringResource(R.string.episode_progress, progressPercent), color = MaterialTheme.colorScheme.secondary) }
-                                                }
-                                                else -> null
-                                            }
-                                            val leadingContent: (@Composable () -> Unit)? = when {
-                                                ep.isWatched -> {
-                                                    {
-                                                        Icon(
-                                                            imageVector = Icons.Default.CheckCircle,
-                                                            contentDescription = "Watched",
-                                                            tint = MaterialTheme.colorScheme.primary,
-                                                            modifier = Modifier.size(24.dp)
-                                                        )
-                                                    }
-                                                }
-                                                progressPercent != null -> {
-                                                    {
-                                                        CircularProgressIndicator(
-                                                            progress = { ep.watchProgressMs.toFloat() / (45 * 60 * 1000L) },
-                                                            modifier = Modifier.size(24.dp),
-                                                            strokeWidth = 2.dp,
-                                                            color = MaterialTheme.colorScheme.secondary
-                                                        )
-                                                    }
-                                                }
-                                                else -> null
-                                            }
-                                            ListItem(
-                                                headlineContent = { Text(text = "Episode ${ep.number}") },
-                                                supportingContent = supportingContent,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(14.dp))
-                                                    .clickable { viewModel.selectEpisode(ep.number) }
-                                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                                leadingContent = leadingContent,
-                                                trailingContent = {
-                                                    IconButton(
-                                                        onClick = {
-                                                            val voice = ep.voiceovers.firstOrNull()
-                                                            val playbackUrl = voice?.playbackUrl ?: return@IconButton
-                                                            val kpId = state.kinopoiskId
-                                                            val showId = kpId?.let { "kp_$it" }
-                                                            val showTitle = effectiveTitle
-                                                            val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
-                                                                ?: resolveDetailsImageUrl(state.details?.backdropUrl)
-                                                            val downloadId = "${showId}_s${selectedSeason}_e${ep.number}_${voice.id}"
-                                                            DownloadActions.enqueueCollapsDownload(
-                                                                context = context,
-                                                                downloadId = downloadId,
-                                                                url = playbackUrl,
-                                                                details = state.details,
-                                                                title = "S${selectedSeason}E${ep.number}",
-                                                                posterUrl = posterUrl,
-                                                                showId = showId,
-                                                                showTitle = showTitle,
-                                                                seasonNumber = selectedSeason,
-                                                                episodeNumber = ep.number,
-                                                            )
-                                                        },
-                                                    ) {
-                                                        Icon(imageVector = Icons.Default.Download, contentDescription = null)
-                                                    }
-                                                },
-                                            )
-                                        }
+                                    }
+                                }
+                                else -> {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(text = stringResource(R.string.lumex_no_data))
                                     }
                                 }
                             }
@@ -1087,6 +1005,7 @@ private fun SeasonCard(
     title: String,
     posterUrl: String?,
     onClick: () -> Unit,
+    onDownload: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -1109,6 +1028,12 @@ private fun SeasonCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
+                IconButton(
+                    onClick = onDownload,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                ) {
+                    Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                }
             }
         }
 

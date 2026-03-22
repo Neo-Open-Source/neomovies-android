@@ -29,7 +29,82 @@
           "line": 19
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/app/src/main/java/com/neo/neomovies/downloads/DownloadUtil.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 4647,
+          "line": 116
+        },
+        "start": {
+          "column": 1,
+          "index": 4647,
+          "line": 116
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/app/src/main/java/com/neo/player/mpv/MPVPlayer.backup.20260127_1032.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/app/src/main/java/com/neo/neomovies/downloads/DownloadsStore.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/app/src/main/java/com/neo/neomovies/downloads/NeoDownloadService.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 852,
+          "line": 25
+        },
+        "start": {
+          "column": 1,
+          "index": 852,
+          "line": 25
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/app/src/main/java/com/neo/neomovies/downloads/DownloadActions.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/.gitignore"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/neomovies-android/app/src/main/java/com/neo/neomovies/downloads/NeoDownloadService.kt"
 }

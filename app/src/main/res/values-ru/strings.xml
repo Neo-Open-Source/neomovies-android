@@ -228,4 +228,9 @@
     <string name="category_popular">Популярное</string>
     <string name="category_top_movies">Топ фильмов</string>
     <string name="category_top_tv">Топ сериалов</string>
+
+    <string name="download_progress_details">Скачивание: %1$d%% %2$s</string>
+    <string name="downloaded_label">Скачано</string>
+    <string name="download_in_progress">Скачивание %1$d%%</string>
+    <string name="download_complete">Скачано</string>
 </resources>
