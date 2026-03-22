@@ -82,33 +82,6 @@ fun DetailsScreen(
     val watchedSummary = state.watchedSummary
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasDownloads by remember { mutableStateOf(false) }
-
-    LaunchedEffect(state.details) {
-        val details = state.details
-        if (details != null) {
-            val kpId = details.externalIds?.kp?.toString()
-                ?: sourceId.removeSuffix(.0).removePrefix(kp_)
-            val key = if (kpId.isNotBlank()) kp_ else 
-            if (key.isNotBlank()) {
-                val store = DownloadsStore(context)
-                hasDownloads = store.loadAll().any { it.showId == key }
-            } else {
-                hasDownloads = false
-            }
-        } else {
-            hasDownloads = false
-        }
-    }
-
-
-    LaunchedEffect(offline) {
-        if (offline) {
-            val store = DownloadsStore(context)
-            val list = store.loadAll()
-            val normalized = sourceId.removeSuffix(".0")
-            val key = if (normalized.startsWith("kp_")) normalized else "kp_$normalized"
-            offlineEntries = list.filter { it.showId == key || it.showTitle == key }
-        }
     val downloadKey = remember(state.details) {
         val details = state.details
         val kpId = details?.externalIds?.kp?.toString()
@@ -133,7 +106,30 @@ fun DetailsScreen(
         }
     }
 
+    LaunchedEffect(state.details) {
+        val key = downloadKey
+        if (key != null) {
+            val store = DownloadsStore(context)
+            hasDownloads = store.loadAll().any { it.showId == key }
+        } else {
+            hasDownloads = false
+        }
     }
+
+    LaunchedEffect(offline) {
+        if (offline) {
+            val store = DownloadsStore(context)
+            val list = store.loadAll()
+            val key = downloadKey
+            offlineEntries = if (key != null) {
+                list.filter { it.showId == key || it.showTitle == key }
+            } else {
+                emptyList()
+            }
+        }
+    }
+
+
 
     if (offline) {
         Scaffold(
@@ -330,10 +326,10 @@ fun DetailsScreen(
                                     details = details,
                                     watchedSummary = watchedSummary,
                                     onWatch = onWatch,
-                                        onDownload = onWatch,
-                                        onDeleteDownload = deleteDownloads,
-                                        hasDownloads = hasDownloads,
-                                        modifier = Modifier
+                                    onDownload = onWatch,
+                                    onDeleteDownload = deleteDownloads,
+                                    hasDownloads = hasDownloads,
+                                    modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp),
                                 )
