@@ -68,15 +68,10 @@ fun TvProfileScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                val currentToken = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
-                    .getString("token", null)
-                if (!currentToken.isNullOrBlank()) {
-                    Thread {
-                        authManager.fetchAndPersistProfile(currentToken)
-                        Handler(Looper.getMainLooper()).post { loadAuthState() }
-                    }.start()
-                }
-                loadAuthState()
+                Thread {
+                    authManager.fetchAndPersistProfile()
+                    Handler(Looper.getMainLooper()).post { loadAuthState() }
+                }.start()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
