@@ -73,6 +73,7 @@ object DownloadUtil {
                     getDatabaseProvider(context),
                     getDownloadCache(context),
                     getDataSourceFactory(context),
+                    executor,
                     executor
                 )
                 manager.maxParallelDownloads = 2
@@ -104,9 +105,8 @@ object DownloadUtil {
             context.applicationContext,
             CHANNEL_ID,
             R.string.downloads_channel_name,
-            0, // descriptionResId
-            NotificationUtil.IMPORTANCE_LOW,
-            0  // p5: visibility
+            0,
+            NotificationUtil.IMPORTANCE_LOW
         )
     }
 
