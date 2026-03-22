@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.media3.common.util.NotificationUtil
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
-import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
@@ -15,9 +14,9 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
-import java.util.concurrent.Executors
 import com.neo.neomovies.R
 import java.io.File
+import java.util.concurrent.Executors
 
 object DownloadUtil {
     private const val CHANNEL_ID = "downloads"
@@ -30,14 +29,14 @@ object DownloadUtil {
 
     fun getDatabaseProvider(context: Context): DatabaseProvider {
         return databaseProvider ?: synchronized(this) {
-            databaseProvider ?: StandaloneDatabaseProvider(context).also { databaseProvider = it }
+            databaseProvider ?: StandaloneDatabaseProvider(context.applicationContext).also { databaseProvider = it }
         }
     }
 
     fun getDownloadCache(context: Context): SimpleCache {
         return downloadCache ?: synchronized(this) {
             downloadCache ?: run {
-                val cacheDir = File(context.filesDir, "downloads/cache")
+                val cacheDir = File(context.applicationContext.filesDir, "downloads/cache")
                 SimpleCache(cacheDir, NoOpCacheEvictor(), getDatabaseProvider(context)).also {
                     downloadCache = it
                 }
@@ -49,7 +48,7 @@ object DownloadUtil {
         return dataSourceFactory ?: synchronized(this) {
             dataSourceFactory ?: run {
                 val httpFactory = DefaultHttpDataSource.Factory()
-                val upstream = DefaultDataSource.Factory(context, httpFactory)
+                val upstream = DefaultDataSource.Factory(context.applicationContext, httpFactory)
                 CacheDataSource.Factory()
                     .setCache(getDownloadCache(context))
                     .setUpstreamDataSourceFactory(upstream)
@@ -63,15 +62,16 @@ object DownloadUtil {
         return downloadManager ?: synchronized(this) {
             downloadManager ?: run {
                 val executor = Executors.newFixedThreadPool(2)
+                
                 DownloadManager(
-                    context,
+                    context.applicationContext,
                     getDatabaseProvider(context),
                     getDownloadCache(context),
                     getDataSourceFactory(context),
-                    executor,
+                    executor, // downloadIndexExecutor
+                    executor  // actionFileUpgradeExecutor
                 ).also { manager ->
                     manager.maxParallelDownloads = 2
-                    manager.addListener(object : DownloadManager.Listener {})
                     downloadManager = manager
                 }
             }
@@ -80,13 +80,13 @@ object DownloadUtil {
 
     fun getNotificationHelper(context: Context): DownloadNotificationHelper {
         return notificationHelper ?: synchronized(this) {
-            notificationHelper ?: DownloadNotificationHelper(context, CHANNEL_ID).also { notificationHelper = it }
+            notificationHelper ?: DownloadNotificationHelper(context.applicationContext, CHANNEL_ID).also { notificationHelper = it }
         }
     }
 
     fun buildProgressNotification(context: Context, downloads: List<Download>) =
         getNotificationHelper(context).buildProgressNotification(
-            context,
+            context.applicationContext,
             android.R.drawable.stat_sys_download,
             null,
             null,
@@ -95,11 +95,11 @@ object DownloadUtil {
 
     fun ensureChannel(context: Context) {
         NotificationUtil.createNotificationChannel(
-            context,
+            context.applicationContext,
             CHANNEL_ID,
             R.string.downloads_channel_name,
-            NotificationUtil.IMPORTANCE_LOW,
             0,
+            NotificationUtil.IMPORTANCE_LOW,
         )
     }
 
