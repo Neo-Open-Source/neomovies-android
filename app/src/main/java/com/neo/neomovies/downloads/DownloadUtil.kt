@@ -86,12 +86,11 @@ object DownloadUtil {
 
     fun buildProgressNotification(context: Context, downloads: List<Download>) =
         getNotificationHelper(context).buildProgressNotification(
-            context = context,
-            smallIcon = android.R.drawable.stat_sys_download,
-            contentIntent = null,
-            message = null,
-            downloads = downloads,
-            notMetRequirements = 0,
+            context,
+            android.R.drawable.stat_sys_download,
+            null,
+            null,
+            downloads,
         )
 
     fun ensureChannel(context: Context) {
@@ -100,6 +99,7 @@ object DownloadUtil {
             CHANNEL_ID,
             R.string.downloads_channel_name,
             NotificationUtil.IMPORTANCE_LOW,
+            0,
         )
     }
 
