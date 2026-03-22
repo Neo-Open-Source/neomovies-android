@@ -73,10 +73,8 @@ object DownloadUtil {
                     getDatabaseProvider(context),
                     getDownloadCache(context),
                     getDataSourceFactory(context),
-                    executor,
                     executor
                 )
-                manager.maxParallelDownloads = 2
                 downloadManager = manager
                 manager
             }
@@ -91,13 +89,14 @@ object DownloadUtil {
         }
     }
 
-    fun buildProgressNotification(context: Context, downloads: List<Download>) =
+    fun buildProgressNotification(context: Context, downloads: List<Download>, notMetRequirements: Int = 0) =
         getNotificationHelper(context).buildProgressNotification(
             context.applicationContext,
             android.R.drawable.stat_sys_download,
             null,
             null,
-            downloads
+            downloads,
+            notMetRequirements
         )
 
     fun ensureChannel(context: Context) {

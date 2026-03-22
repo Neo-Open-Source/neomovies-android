@@ -21,6 +21,6 @@ class NeoDownloadService : DownloadService(
     override fun getScheduler(): Scheduler? = null
 
     override fun getForegroundNotification(downloads: MutableList<Download>, notMetRequirements: Int): Notification {
-        return DownloadUtil.buildProgressNotification(this, downloads)
+        return DownloadUtil.buildProgressNotification(this, downloads, notMetRequirements)
     }
 }
