@@ -32,10 +32,13 @@ import androidx.compose.ui.res.stringResource
 import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.MediaPosterCard
 import com.neo.neomovies.ui.navigation.CategoryType
+import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
+import com.neo.neomovies.data.network.OfflineManager
+import com.neo.neomovies.ui.downloads.DownloadsScreen
 
 @Composable
 fun HomeScreen(
@@ -45,6 +48,47 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
+    val offline by OfflineManager.isOffline().collectAsStateWithLifecycleCompat()
+
+    if (offline) {
+        DownloadsScreen(
+            onDeleteEntry = { entry ->
+                val context = androidx.compose.ui.platform.LocalContext.current
+                com.neo.neomovies.downloads.DownloadsStore(context).removeById(entry.id)
+                androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
+                    context,
+                    com.neo.neomovies.downloads.NeoDownloadService::class.java,
+                    entry.id,
+                    false,
+                )
+            },
+            onPlayEntry = { entry ->
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val url = entry.originalUrl ?: return@DownloadsScreen
+                val kpId = entry.showId
+                    ?.removePrefix("kp_")
+                    ?.toIntOrNull()
+                val displayTitle = when {
+                    entry.seasonNumber != null && entry.episodeNumber != null ->
+                        "S%02dE%02d".format(entry.seasonNumber, entry.episodeNumber)
+                    else -> entry.title
+                }
+                context.startActivity(
+                    com.neo.player.PlayerActivity.intentExo(
+                        context,
+                        urls = listOf(url),
+                        names = listOf(displayTitle),
+                        startIndex = 0,
+                        title = entry.showTitle ?: entry.title,
+                        startFromBeginning = false,
+                        useCollapsHeaders = false,
+                        kinopoiskId = kpId,
+                    ),
+                )
+            },
+        )
+        return
+    }
 
     val mode = when {
         state.isLoading -> HomeMode.Loading

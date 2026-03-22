@@ -1,0 +1,38 @@
+name: Build APKs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build mobile universal APK
+        run: ./gradlew :app:assembleRelease
+
+      - name: Build TV universal APK
+        run: ./gradlew :app:assembleTvRelease
+
+      - name: Upload mobile APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-universal-apk
+          path: app/build/outputs/apk/release/*universal*.apk
+
+      - name: Upload TV APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tv-universal-apk
+          path: app/build/outputs/apk/tvRelease/*universal*.apk

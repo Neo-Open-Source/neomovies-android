@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +56,7 @@ import com.neo.neomovies.ui.settings.LanguageMode
 import com.neo.neomovies.ui.theme.NeoMoviesTheme
 import com.neo.neomovies.ui.motion.animatedComposable
 import com.neo.neomovies.ui.watch.WatchSelectorScreen
+import com.neo.neomovies.ui.downloads.DownloadsScreen
 import com.neo.player.PlayerActivity
 
 class MainActivity : AppCompatActivity() {
@@ -96,13 +98,9 @@ class MainActivity : AppCompatActivity() {
             LanguageManager.apply(this)
         }
 
-        val authPrefs = getSharedPreferences("auth", MODE_PRIVATE)
-        val token = authPrefs.getString("token", null)
-        if (!token.isNullOrBlank()) {
-            Thread {
-                neoIdAuthManager.fetchAndPersistProfile(token)
-            }.start()
-        }
+        Thread {
+            neoIdAuthManager.fetchAndPersistProfile()
+        }.start()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -119,7 +117,7 @@ class MainActivity : AppCompatActivity() {
             when (result) {
                 is NeoIdAuthResult.Success -> {
                     Thread {
-                        neoIdAuthManager.fetchAndPersistProfile(result.token)
+                        neoIdAuthManager.fetchAndPersistProfile()
                         neoIdAuthManager.verifyAndPersistUser(result.token)
                     }.start()
                 }
@@ -174,6 +172,50 @@ fun NeoMoviesApp(
                         onBack = { navController.popBackStack() },
                         onOpenDetails = { sourceId ->
                             navController.navigate(NavRoute.Details.create(sourceId))
+                        },
+                    )
+                }
+
+                animatedComposable(NavRoute.Downloads.route) {
+                    DownloadsScreen(
+                        onOpenDetails = { sourceId ->
+                            if (sourceId.isNotBlank()) {
+                                navController.navigate(NavRoute.Details.create(sourceId))
+                            }
+                        },
+                        onDeleteEntry = { entry ->
+                            val context = LocalContext.current
+                            com.neo.neomovies.downloads.DownloadsStore(context).removeById(entry.id)
+                            androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
+                                context,
+                                com.neo.neomovies.downloads.NeoDownloadService::class.java,
+                                entry.id,
+                                false,
+                            )
+                        },
+                        onPlayEntry = { entry ->
+                            val context = LocalContext.current
+                            val url = entry.originalUrl ?: return@DownloadsScreen
+                            val kpId = entry.showId
+                                ?.removePrefix("kp_")
+                                ?.toIntOrNull()
+                            val displayTitle = when {
+                                entry.seasonNumber != null && entry.episodeNumber != null ->
+                                    "S%02dE%02d".format(entry.seasonNumber, entry.episodeNumber)
+                                else -> entry.title
+                            }
+                            context.startActivity(
+                                com.neo.player.PlayerActivity.intentExo(
+                                    context,
+                                    urls = listOf(url),
+                                    names = listOf(displayTitle),
+                                    startIndex = 0,
+                                    title = entry.showTitle ?: entry.title,
+                                    startFromBeginning = false,
+                                    useCollapsHeaders = false,
+                                    kinopoiskId = kpId,
+                                ),
+                            )
                         },
                     )
                 }
@@ -332,11 +374,12 @@ fun NeoMoviesApp(
     }
 
     if (isTopLevelRoute) {
-        val currentTopLevel = when (currentDestination?.route) {
-            NavRoute.Favorites.route -> AppDestinations.FAVORITES
-            NavRoute.Profile.route -> AppDestinations.PROFILE
-            else -> AppDestinations.HOME
-        }
+    val currentTopLevel = when (currentDestination?.route) {
+        NavRoute.Favorites.route -> AppDestinations.FAVORITES
+        NavRoute.Downloads.route -> AppDestinations.DOWNLOADS
+        NavRoute.Profile.route -> AppDestinations.PROFILE
+        else -> AppDestinations.HOME
+    }
 
         NavigationSuiteScaffold(
             navigationSuiteItems = {
@@ -380,6 +423,7 @@ enum class AppDestinations(
     val route: String,
 ) {
     HOME(R.string.tab_home, Icons.Filled.Home, NavRoute.Home.route),
+    DOWNLOADS(R.string.tab_downloads, Icons.Filled.Download, NavRoute.Downloads.route),
     FAVORITES(R.string.tab_favorites, Icons.Filled.Favorite, NavRoute.Favorites.route),
     PROFILE(R.string.profile_title, Icons.Filled.AccountBox, NavRoute.Profile.route),
 }

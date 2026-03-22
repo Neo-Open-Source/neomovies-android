@@ -41,6 +41,7 @@ import coil.compose.AsyncImage
 import com.neo.neomovies.R
 import com.neo.neomovies.auth.NeoIdAuthManager
 import com.neo.neomovies.ui.components.PreferenceItem
+import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 
 @Composable
 fun ProfileScreen(
@@ -52,6 +53,7 @@ fun ProfileScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val authManager = remember { NeoIdAuthManager(context) }
+    val authState by NeoIdAuthManager.authState().collectAsStateWithLifecycleCompat()
     var token by remember { mutableStateOf<String?>(null) }
     var displayName by remember { mutableStateOf<String?>(null) }
     var email by remember { mutableStateOf<String?>(null) }
@@ -69,20 +71,19 @@ fun ProfileScreen(
         loadAuthState()
     }
 
+    LaunchedEffect(authState.isAuthorized, authState.reason) {
+        loadAuthState()
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                val currentToken = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
-                    .getString("token", null)
-                if (!currentToken.isNullOrBlank()) {
-                    Thread {
-                        authManager.fetchAndPersistProfile(currentToken)
-                        Handler(Looper.getMainLooper()).post {
-                            loadAuthState()
-                        }
-                    }.start()
-                }
-                loadAuthState()
+                Thread {
+                    authManager.fetchAndPersistProfile()
+                    Handler(Looper.getMainLooper()).post {
+                        loadAuthState()
+                    }
+                }.start()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

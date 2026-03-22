@@ -20,9 +20,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,6 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.DisposableEffectResult
@@ -68,6 +71,8 @@ import com.neo.neomovies.torrserver.api.model.TorrentFileStat
 import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
 import com.neo.neomovies.ui.util.normalizeImageUrl
+import com.neo.neomovies.downloads.DownloadActions
+import com.neo.neomovies.downloads.MediaNameParser
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -115,9 +120,40 @@ fun WatchSelectorScreen(
     var dialogBusy by remember { mutableStateOf(false) }
 
     var showAutostartDialog by remember { mutableStateOf(false) }
+    var showQualityPicker by remember { mutableStateOf(false) }
+    var pendingQualityEpisodes by remember { mutableStateOf<List<Episode>>(emptyList()) }
+    var pendingQualitySeason by remember { mutableStateOf<Int?>(null) }
+    var qualityVariants by remember { mutableStateOf<List<com.neo.neomovies.data.collaps.CollapsRepository.HlsVariant>>(emptyList()) }
+    var qualityLoading by remember { mutableStateOf(false) }
+    var qualityError by remember { mutableStateOf<String?>(null) }
 
     val effectiveTitle = state.details?.title?.takeIf { it.isNotBlank() }
         ?: state.details?.name?.takeIf { it.isNotBlank() }
+
+    fun downloadEpisodes(episodes: List<Episode>, seasonNumber: Int, qualityUrl: String? = null) {
+        val kpId = state.kinopoiskId
+        val showId = kpId?.let { "kp_$it" }
+        val showTitle = effectiveTitle
+        val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
+            ?: resolveDetailsImageUrl(state.details?.backdropUrl)
+        episodes.forEach { ep ->
+            val voice = ep.voiceovers.firstOrNull() ?: return@forEach
+            val url = qualityUrl ?: voice.playbackUrl
+            val downloadId = "${showId}_s${seasonNumber}_e${ep.number}_${voice.id}"
+            DownloadActions.enqueueCollapsDownload(
+                context = context,
+                downloadId = downloadId,
+                url = url,
+                details = state.details,
+                title = "S${seasonNumber}E${ep.number}",
+                posterUrl = posterUrl,
+                showId = showId,
+                showTitle = showTitle,
+                seasonNumber = seasonNumber,
+                episodeNumber = ep.number,
+            )
+        }
+    }
 
     // Create episode progress callback for Collaps
     val episodeProgressCallback: (Int, Int, Int, Long, Long) -> Unit = { kpId, season, episode, positionMs, durationMs ->
@@ -301,6 +337,75 @@ fun WatchSelectorScreen(
         )
     }
 
+    if (showQualityPicker) {
+        AlertDialog(
+            onDismissRequest = {
+                showQualityPicker = false
+                qualityVariants = emptyList()
+                qualityError = null
+            },
+            title = { Text(text = stringResource(R.string.select_video_quality)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (qualityLoading) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Text(text = stringResource(R.string.loading))
+                        }
+                    } else if (qualityError != null) {
+                        Text(text = qualityError ?: "")
+                    } else {
+                        qualityVariants.forEach { v ->
+                            Button(
+                                onClick = {
+                                    val seasonNumber = pendingQualitySeason
+                                    if (seasonNumber != null && seasonNumber > 0) {
+                                        downloadEpisodes(pendingQualityEpisodes, seasonNumber, v.url)
+                                    } else if (pendingQualityEpisodes.isEmpty()) {
+                                        val kpId = state.kinopoiskId
+                                        val showId = kpId?.let { "kp_$it" }
+                                        val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
+                                            ?: resolveDetailsImageUrl(state.details?.backdropUrl)
+                                        DownloadActions.enqueueCollapsDownload(
+                                            context = context,
+                                            downloadId = "${showId}_movie_${System.currentTimeMillis()}",
+                                            url = v.url,
+                                            details = state.details,
+                                            title = effectiveTitle ?: "Movie",
+                                            posterUrl = posterUrl,
+                                            showId = showId,
+                                            showTitle = effectiveTitle,
+                                            seasonNumber = null,
+                                            episodeNumber = null,
+                                        )
+                                    } else {
+                                        val seasons = state.tvSeasons.orEmpty()
+                                        seasons.forEach { downloadEpisodes(it.episodes, it.number, v.url) }
+                                    }
+                                    showQualityPicker = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = v.label)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showQualityPicker = false
+                        qualityVariants = emptyList()
+                        qualityError = null
+                    }
+                ) {
+                    Text(text = stringResource(R.string.common_ok))
+                }
+            },
+        )
+    }
+
     val topBarTitle = effectiveTitle
         ?: stringResource(R.string.app_name)
 
@@ -343,7 +448,62 @@ fun WatchSelectorScreen(
                                 ?: resolveDetailsImageUrl(state.details?.posterUrl)
 
                             val seasons = state.tvSeasons.orEmpty()
-                            if (seasons.isEmpty()) {
+                            val movie = state.movie
+                            if (seasons.isEmpty() && movie != null) {
+                                val poster = resolveDetailsImageUrl(state.details?.backdropUrl)
+                                    ?: resolveDetailsImageUrl(state.details?.posterUrl)
+                                Column(
+                                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            val url = state.selectedPlaybackUrl ?: return@Button
+                                            val kpId = state.kinopoiskId
+                                            val showId = kpId?.let { "kp_$it" }
+                                            val title = effectiveTitle ?: "Movie"
+                                            DownloadActions.enqueueCollapsDownload(
+                                                context = context,
+                                                downloadId = "${showId}_movie_${System.currentTimeMillis()}",
+                                                url = url,
+                                                details = state.details,
+                                                title = title,
+                                                posterUrl = poster,
+                                                showId = showId,
+                                                showTitle = effectiveTitle,
+                                                seasonNumber = null,
+                                                episodeNumber = null,
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Text(text = stringResource(R.string.download_movie))
+                                    }
+                                    Button(
+                                        onClick = {
+                                            val hls = movie.hlsUrl ?: return@Button
+                                            showQualityPicker = true
+                                            pendingQualityEpisodes = emptyList()
+                                            pendingQualitySeason = null
+                                            qualityLoading = true
+                                            qualityError = null
+                                            scope.launch {
+                                                val variants = viewModel.fetchHlsVariants(hls)
+                                                if (variants.isEmpty()) {
+                                                    qualityError = stringResource(R.string.download_quality_unavailable)
+                                                }
+                                                qualityVariants = variants
+                                                qualityLoading = false
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Text(text = stringResource(R.string.download_movie_quality))
+                                    }
+                                }
+                            } else if (seasons.isEmpty()) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center,
@@ -354,6 +514,45 @@ fun WatchSelectorScreen(
                                 val selectedSeason = state.selectedSeasonNumber
 
                                 if (selectedSeason == null) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Button(
+                                            onClick = { seasons.forEach { downloadEpisodes(it.episodes, it.number) } },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                        ) {
+                                            Text(text = stringResource(R.string.download_series))
+                                        }
+                                        Button(
+                                            onClick = {
+                                                val firstUrl = seasons.firstOrNull()?.episodes?.firstOrNull()?.voiceovers?.firstOrNull()?.playbackUrl
+                                                if (firstUrl == null || !firstUrl.endsWith(".m3u8", true)) {
+                                                    qualityError = stringResource(R.string.download_quality_unavailable)
+                                                    showQualityPicker = true
+                                                    return@Button
+                                                }
+                                                showQualityPicker = true
+                                                pendingQualityEpisodes = seasons.flatMap { it.episodes }
+                                                pendingQualitySeason = -1
+                                                qualityLoading = true
+                                                qualityError = null
+                                                scope.launch {
+                                                    val variants = viewModel.fetchHlsVariants(firstUrl)
+                                                    if (variants.isEmpty()) {
+                                                        qualityError = stringResource(R.string.download_quality_unavailable)
+                                                    }
+                                                    qualityVariants = variants
+                                                    qualityLoading = false
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                        ) {
+                                            Text(text = stringResource(R.string.download_series_quality))
+                                        }
+                                    }
                                     LazyVerticalGrid(
                                         columns = GridCells.Adaptive(minSize = 140.dp),
                                         modifier = Modifier.fillMaxSize(),
@@ -377,6 +576,42 @@ fun WatchSelectorScreen(
                                         verticalArrangement = Arrangement.spacedBy(10.dp),
                                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                                     ) {
+                                        item {
+                                            Button(
+                                                onClick = { downloadEpisodes(episodes, selectedSeason) },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp),
+                                            ) {
+                                                Text(text = stringResource(R.string.download_season))
+                                            }
+                                            Button(
+                                                onClick = {
+                                                    val firstUrl = episodes.firstOrNull()?.voiceovers?.firstOrNull()?.playbackUrl
+                                                    if (firstUrl == null || !firstUrl.endsWith(".m3u8", true)) {
+                                                        qualityError = stringResource(R.string.download_quality_unavailable)
+                                                        showQualityPicker = true
+                                                        return@Button
+                                                    }
+                                                    showQualityPicker = true
+                                                    pendingQualityEpisodes = episodes
+                                                    pendingQualitySeason = selectedSeason
+                                                    qualityLoading = true
+                                                    qualityError = null
+                                                    scope.launch {
+                                                        val variants = viewModel.fetchHlsVariants(firstUrl)
+                                                        if (variants.isEmpty()) {
+                                                            qualityError = stringResource(R.string.download_quality_unavailable)
+                                                        }
+                                                        qualityVariants = variants
+                                                        qualityLoading = false
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(12.dp),
+                                            ) {
+                                                Text(text = stringResource(R.string.download_season_quality))
+                                            }
+                                        }
                                         items(episodes) { ep ->
                                             val progressPercent = if (ep.watchProgressMs > 0) {
                                                 val duration = 45 * 60 * 1000L // Approximate duration in ms
@@ -425,6 +660,34 @@ fun WatchSelectorScreen(
                                                     .clickable { viewModel.selectEpisode(ep.number) }
                                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                                 leadingContent = leadingContent,
+                                                trailingContent = {
+                                                    IconButton(
+                                                        onClick = {
+                                                            val voice = ep.voiceovers.firstOrNull()
+                                                            val playbackUrl = voice?.playbackUrl ?: return@IconButton
+                                                            val kpId = state.kinopoiskId
+                                                            val showId = kpId?.let { "kp_$it" }
+                                                            val showTitle = effectiveTitle
+                                                            val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
+                                                                ?: resolveDetailsImageUrl(state.details?.backdropUrl)
+                                                            val downloadId = "${showId}_s${selectedSeason}_e${ep.number}_${voice.id}"
+                                                            DownloadActions.enqueueCollapsDownload(
+                                                                context = context,
+                                                                downloadId = downloadId,
+                                                                url = playbackUrl,
+                                                                details = state.details,
+                                                                title = "S${selectedSeason}E${ep.number}",
+                                                                posterUrl = posterUrl,
+                                                                showId = showId,
+                                                                showTitle = showTitle,
+                                                                seasonNumber = selectedSeason,
+                                                                episodeNumber = ep.number,
+                                                            )
+                                                        },
+                                                    ) {
+                                                        Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                                                    }
+                                                },
                                             )
                                         }
                                     }
@@ -564,6 +827,65 @@ fun WatchSelectorScreen(
 
     if (state.torrentFiles != null) {
         val sheetState = rememberModalBottomSheetState()
+        var selectionMode by remember { mutableStateOf(false) }
+        var selectedIds by remember { mutableStateOf(setOf<Int>()) }
+        var showNoSpaceDialog by remember { mutableStateOf(false) }
+
+        if (showNoSpaceDialog) {
+            AlertDialog(
+                onDismissRequest = { showNoSpaceDialog = false },
+                title = { Text(text = stringResource(R.string.download_not_enough_space_title)) },
+                text = { Text(text = stringResource(R.string.download_not_enough_space_message)) },
+                confirmButton = {
+                    Button(onClick = { showNoSpaceDialog = false }) {
+                        Text(text = stringResource(R.string.common_ok))
+                    }
+                },
+            )
+        }
+
+        data class TorrentDisplayItem(
+            val key: String,
+            val isFolder: Boolean,
+            val title: String,
+            val file: TorrentFileStat? = null,
+            val folderPath: String? = null,
+        )
+
+        val torrentFiles = state.torrentFiles
+        val items = remember(torrentFiles) {
+            val list = ArrayList<TorrentDisplayItem>()
+            val grouped = torrentFiles.groupBy { f ->
+                val path = f.path ?: ""
+                path.substringBeforeLast('/', "")
+            }
+            grouped.forEach { (folder, files) ->
+                if (folder.isNotBlank()) {
+                    list.add(
+                        TorrentDisplayItem(
+                            key = "folder:$folder",
+                            isFolder = true,
+                            title = folder.substringAfterLast('/'),
+                            folderPath = folder,
+                        )
+                    )
+                }
+                files.forEach { f ->
+                    val name = f.path?.substringAfterLast('/') ?: "Unknown"
+                    list.add(
+                        TorrentDisplayItem(
+                            key = "file:${f.id}",
+                            isFolder = false,
+                            title = name,
+                            file = f,
+                            folderPath = folder.ifBlank { null },
+                        )
+                    )
+                }
+            }
+            list
+        }
+
         ModalBottomSheet(
             onDismissRequest = { viewModel.clearTorrentSelection() },
             sheetState = sheetState,
@@ -589,31 +911,147 @@ fun WatchSelectorScreen(
                 }
             }
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                itemsIndexed(state.torrentFiles) { index, file ->
-                    ListItem(
-                        headlineContent = { 
-                            Text(
-                                text = file.path?.substringAfterLast('/') ?: "Unknown",
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            ) 
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = selectionMode && selectedIds.size == torrentFiles.size,
+                            onCheckedChange = { checked ->
+                                selectionMode = true
+                                selectedIds = if (checked) {
+                                    torrentFiles.map { it.id }.toSet()
+                                } else {
+                                    emptySet()
+                                }
+                            },
+                        )
+                        Text(text = stringResource(R.string.select_all))
+                    }
+                    Button(
+                        enabled = selectedIds.isNotEmpty(),
+                        onClick = {
+                            val kpId = state.kinopoiskId
+                            val showId = kpId?.let { "kp_$it" }
+                            val showTitle = effectiveTitle
+                            val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
+                                ?: resolveDetailsImageUrl(state.details?.backdropUrl)
+
+                            var enough = true
+                            torrentFiles.filter { selectedIds.contains(it.id) }.forEach { file ->
+                                val url = viewModel.getTorrentFileStreamUrl(file.id) ?: return@forEach
+                                val name = file.path?.substringAfterLast('/') ?: "Unknown"
+                                val se = MediaNameParser.parseSeasonEpisode(name)
+                                val ok = DownloadActions.enqueueTorrentDownload(
+                                    context = context,
+                                    downloadId = "torrent_${file.id}_${System.currentTimeMillis()}",
+                                    fileUrl = url,
+                                    fileName = name,
+                                    fileSize = file.length,
+                                    showId = showId ?: name,
+                                    showTitle = showTitle ?: name,
+                                    seasonNumber = se?.first,
+                                    episodeNumber = se?.second,
+                                    posterUrl = posterUrl,
+                                )
+                                if (!ok) enough = false
+                            }
+                            if (!enough) showNoSpaceDialog = true
                         },
-                        supportingContent = { 
-                            Text(
-                                text = formatFileSize(file.length),
-                                style = MaterialTheme.typography.bodySmall
-                            ) 
-                        },
-                        modifier = Modifier.clickable {
-                            viewModel.selectTorrentFile(index)
+                    ) {
+                        Text(text = stringResource(R.string.download_selected))
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(items) { item ->
+                        if (item.isFolder) {
+                            val folder = item.folderPath ?: return@items
+                            val folderFiles = torrentFiles.filter { it.path?.startsWith("$folder/") == true }
+                            val allSelected = folderFiles.isNotEmpty() && folderFiles.all { selectedIds.contains(it.id) }
+                            ListItem(
+                                headlineContent = { Text(text = item.title) },
+                                leadingContent = {
+                                    if (selectionMode) {
+                                        Checkbox(
+                                            checked = allSelected,
+                                            onCheckedChange = { checked ->
+                                                selectionMode = true
+                                                val ids = folderFiles.map { it.id }
+                                                selectedIds = if (checked) {
+                                                    selectedIds + ids
+                                                } else {
+                                                    selectedIds - ids.toSet()
+                                                }
+                                            },
+                                        )
+                                    }
+                                },
+                            )
+                        } else {
+                            val file = item.file ?: return@items
+                            val isChecked = selectedIds.contains(file.id)
+                            ListItem(
+                                headlineContent = {
+                                    Text(
+                                        text = item.title,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                supportingContent = {
+                                    Text(
+                                        text = formatFileSize(file.length),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                leadingContent = {
+                                    if (selectionMode) {
+                                        Checkbox(
+                                            checked = isChecked,
+                                            onCheckedChange = { checked ->
+                                                selectionMode = true
+                                                selectedIds = if (checked) {
+                                                    selectedIds + file.id
+                                                } else {
+                                                    selectedIds - file.id
+                                                }
+                                            },
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .combinedClickable(
+                                        onClick = {
+                                            if (selectionMode) {
+                                                selectedIds = if (isChecked) {
+                                                    selectedIds - file.id
+                                                } else {
+                                                    selectedIds + file.id
+                                                }
+                                            } else {
+                                                val index = torrentFiles.indexOfFirst { it.id == file.id }
+                                                if (index >= 0) viewModel.selectTorrentFile(index)
+                                            }
+                                        },
+                                        onLongClick = {
+                                            selectionMode = true
+                                            selectedIds = selectedIds + file.id
+                                        },
+                                    ),
+                            )
                         }
-                    )
+                    }
                 }
             }
         }

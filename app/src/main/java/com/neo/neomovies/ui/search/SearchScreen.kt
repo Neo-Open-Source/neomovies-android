@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.neo.neomovies.ui.components.MediaPosterCard
 import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import org.koin.androidx.compose.koinViewModel
+import com.neo.neomovies.data.network.OfflineManager
 
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +55,34 @@ fun SearchScreen(
     viewModel: SearchViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
+    val offline by OfflineManager.isOffline().collectAsStateWithLifecycleCompat()
     val listState = rememberLazyGridState()
+
+    if (offline) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = stringResource(R.string.search_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.nav_back),
+                            )
+                        }
+                    },
+                )
+            },
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(text = stringResource(R.string.offline_search_unavailable))
+            }
+        }
+        return
+    }
 
     val reachedBottom: Boolean by remember {
         derivedStateOf {

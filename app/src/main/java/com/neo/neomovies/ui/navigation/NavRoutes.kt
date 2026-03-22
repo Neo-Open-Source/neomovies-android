@@ -10,6 +10,7 @@ sealed class NavRoute(val route: String) {
     data object Home : NavRoute("home")
     data object Favorites : NavRoute("favorites")
     data object Profile : NavRoute("profile")
+    data object Downloads : NavRoute("downloads")
     data object Search : NavRoute("search")
     data object WatchSelector : NavRoute("watch/{sourceId}") {
         fun create(sourceId: String) = "watch/$sourceId"

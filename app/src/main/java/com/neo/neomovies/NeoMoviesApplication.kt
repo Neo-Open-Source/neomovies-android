@@ -21,6 +21,9 @@ class NeoMoviesApplication : Application() {
 
         LanguageManager.apply(this)
 
+        com.neo.neomovies.data.network.OfflineManager.initFromConnectivity(this)
+        com.neo.neomovies.auth.NeoIdAuthManager.refreshAuthState(this, reason = "app_start")
+
         val prefs = getSharedPreferences("settings", MODE_PRIVATE)
         if (prefs.getBoolean("torrserver_autostart", false)) {
             TorServerService.start(this)

@@ -16,6 +16,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 private const val PREFS_NAME = "neo_id_prefs"
 private const val KEY_STATE = "neo_id_state"
@@ -32,22 +35,62 @@ class NeoIdAuthManager(
     private val client: OkHttpClient = OkHttpClient()
 ) {
 
-    private fun decodeJwtPayload(token: String): JSONObject? {
-        return try {
-            val parts = token.split(".")
-            if (parts.size < 2) return null
+    private fun refreshAccessToken(refreshToken: String): Pair<String, String?>? {
+        val json = JSONObject().apply { put("refresh_token", refreshToken) }
+        val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(BuildConfig.NEO_ID_BASE_URL.trimEnd('/') + "/api/auth/refresh")
+            .post(body)
+            .build()
 
-            val payload = parts[1]
-            val normalized = payload.replace('-', '+').replace('_', '/')
-            val padded = normalized + "===".substring((normalized.length + 3) % 4)
-            val json = String(Base64.decode(padded, Base64.DEFAULT))
-            JSONObject(json)
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val respBody = response.body?.string().orEmpty()
+                val obj = JSONObject(respBody)
+                val access = obj.optString("access_token", "").takeIf { it.isNotBlank() }
+                val refresh = obj.optString("refresh_token", "").takeIf { it.isNotBlank() }
+                if (access == null) return@use null
+                access to refresh
+            }
         } catch (_: Exception) {
             null
         }
     }
 
-    fun fetchAndPersistProfile(token: String): NeoIdAuthResult {
+    fun ensureValidAccessToken(): String? {
+        val authPrefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
+        val token = authPrefs.getString(KEY_TOKEN, null)
+        if (token.isNullOrBlank()) return null
+        if (!isTokenExpired(token)) return token
+
+        val refreshToken = authPrefs.getString(KEY_REFRESH_TOKEN, null)
+        if (refreshToken.isNullOrBlank()) {
+            clearAuth()
+            return null
+        }
+
+        val refreshed = refreshAccessToken(refreshToken)
+        if (refreshed == null) {
+            Log.w("NeoID", "Refresh failed: invalid or expired refresh token")
+            clearAuth()
+            return null
+        }
+
+        val newAccess = refreshed.first
+        val newRefresh = refreshed.second
+        authPrefs.edit {
+            putString(KEY_TOKEN, newAccess)
+            if (!newRefresh.isNullOrBlank()) putString(KEY_REFRESH_TOKEN, newRefresh)
+        }
+        refreshAuthState(context, reason = "token_refreshed")
+        return newAccess
+    }
+
+    fun fetchAndPersistProfile(): NeoIdAuthResult {
+        val token = ensureValidAccessToken()
+            ?: return NeoIdAuthResult.Error(message = "Токен не найден или истек")
+
         val request = Request.Builder()
             .url(BuildConfig.NEO_ID_BASE_URL.trimEnd('/') + "/api/user/profile")
             .get()
@@ -57,6 +100,10 @@ class NeoIdAuthManager(
         return try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
+                    if (response.code == 401) {
+                        Log.w("NeoID", "Profile fetch unauthorized; clearing auth")
+                        clearAuth()
+                    }
                     return NeoIdAuthResult.Error(message = "Ошибка profile: HTTP ${response.code}")
                 }
 
@@ -184,6 +231,7 @@ class NeoIdAuthManager(
             if (!emailFromJwt.isNullOrBlank()) putString(KEY_EMAIL, emailFromJwt)
             if (!nameFromJwt.isNullOrBlank()) putString(KEY_DISPLAY_NAME, nameFromJwt)
         }
+        refreshAuthState(context, reason = "callback")
 
         return NeoIdAuthResult.Success(token = token)
     }
@@ -241,6 +289,7 @@ class NeoIdAuthManager(
                     if (displayName != null) putString(KEY_DISPLAY_NAME, displayName) else remove(KEY_DISPLAY_NAME)
                     putString(KEY_AVATAR, user.optString("avatar", ""))
                 }
+                refreshAuthState(context, reason = "verify")
 
                 NeoIdAuthResult.Success(token = token)
             }
@@ -250,13 +299,74 @@ class NeoIdAuthManager(
     }
 
     fun logout() {
+        clearAuth()
+    }
+
+    fun isAuthorized(): Boolean {
+        val authPrefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
+        val token = authPrefs.getString(KEY_TOKEN, null) ?: return false
+        return !isTokenExpired(token)
+    }
+
+    private fun clearAuth() {
         val authPrefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
         authPrefs.edit {
             remove(KEY_TOKEN)
+            remove(KEY_REFRESH_TOKEN)
             remove(KEY_UNIFIED_ID)
             remove(KEY_EMAIL)
             remove(KEY_DISPLAY_NAME)
             remove(KEY_AVATAR)
+        }
+        refreshAuthState(context, reason = "cleared")
+    }
+
+    private fun isTokenExpired(token: String, leewaySeconds: Long = 60): Boolean {
+        return isTokenExpiredStatic(token, leewaySeconds)
+    }
+
+    private fun decodeJwtPayload(token: String): JSONObject? {
+        return decodeJwtPayloadStatic(token)
+    }
+
+    companion object {
+        data class AuthState(
+            val isAuthorized: Boolean,
+            val reason: String? = null,
+        )
+
+        private val authStateFlow = MutableStateFlow(AuthState(isAuthorized = false))
+
+        fun authState(): StateFlow<AuthState> = authStateFlow.asStateFlow()
+
+        fun refreshAuthState(context: Context, reason: String? = null) {
+            val prefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
+            val token = prefs.getString(KEY_TOKEN, null)
+            val isValid = !token.isNullOrBlank() && !isTokenExpiredStatic(token)
+            authStateFlow.value = AuthState(isAuthorized = isValid, reason = reason)
+        }
+
+        private fun isTokenExpiredStatic(token: String, leewaySeconds: Long = 60): Boolean {
+            val payload = decodeJwtPayloadStatic(token) ?: return true
+            val exp = payload.optLong("exp", 0L)
+            if (exp <= 0L) return true
+            val now = System.currentTimeMillis() / 1000
+            return exp <= (now + leewaySeconds)
+        }
+
+        private fun decodeJwtPayloadStatic(token: String): JSONObject? {
+            return try {
+                val parts = token.split(".")
+                if (parts.size < 2) return null
+
+                val payload = parts[1]
+                val normalized = payload.replace('-', '+').replace('_', '/')
+                val padded = normalized + "===".substring((normalized.length + 3) % 4)
+                val json = String(Base64.decode(padded, Base64.DEFAULT))
+                JSONObject(json)
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 }
@@ -265,4 +375,3 @@ sealed class NeoIdAuthResult {
     data class Success(val token: String) : NeoIdAuthResult()
     data class Error(val message: String) : NeoIdAuthResult()
 }
-

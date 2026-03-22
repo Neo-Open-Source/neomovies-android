@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class WatchSelectorUiState(
     val isLoading: Boolean = true,
@@ -74,6 +76,7 @@ data class Season(
 data class Movie(
     val title: String,
     val voiceovers: List<Voiceover>,
+    val hlsUrl: String? = null,
 )
 
 class WatchSelectorViewModel(
@@ -124,11 +127,18 @@ class WatchSelectorViewModel(
                                             } else {
                                                 collapsRepository.buildRewrittenMpdUri(kpId, 0, 0, mpd, movie.voices, movie.subtitles)
                                             }
+                                        val movieVoices = movie.voices.mapIndexed { idx, name ->
+                                            Voiceover(
+                                                id = "collaps:movie:$idx",
+                                                title = name,
+                                                playbackUrl = rewritten,
+                                            )
+                                        }
                                         _state.update {
                                             it.copy(
                                                 isSourcesLoading = false,
                                                 isPlaybackResolving = false,
-                                                movie = Movie(title = "", voiceovers = emptyList()),
+                                                movie = Movie(title = "", voiceovers = movieVoices, hlsUrl = movie.hlsUrl),
                                                 selectedPlaybackUrl = rewritten,
                                             )
                                         }
@@ -506,6 +516,18 @@ class WatchSelectorViewModel(
                 torrentFiles = null,
                 torrentHash = null
             )
+        }
+    }
+
+    fun getTorrentFileStreamUrl(fileId: Int): String? {
+        val hash = _state.value.torrentHash ?: return null
+        val api = SimpleStreamingApi(TorrServerManager.baseUrl())
+        return api.getFileStreamUrl(hash, fileId)
+    }
+
+    suspend fun fetchHlsVariants(url: String): List<CollapsRepository.HlsVariant> {
+        return withContext(Dispatchers.IO) {
+            collapsRepository.fetchHlsVariants(url)
         }
     }
 

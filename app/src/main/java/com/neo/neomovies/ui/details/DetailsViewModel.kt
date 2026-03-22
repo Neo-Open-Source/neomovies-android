@@ -163,8 +163,7 @@ class DetailsViewModel(
 
     private fun hasToken(): Boolean {
         val ctx = NeoMoviesApplication.instance.applicationContext
-        val prefs = ctx.getSharedPreferences("auth", Context.MODE_PRIVATE)
-        return !prefs.getString("token", null).isNullOrBlank()
+        return com.neo.neomovies.auth.NeoIdAuthManager(ctx).isAuthorized()
     }
 
     private fun loadWatchedSummary(details: MediaDetailsDto): WatchedSummary? {

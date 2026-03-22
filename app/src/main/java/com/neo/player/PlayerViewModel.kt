@@ -18,6 +18,7 @@ import androidx.media3.common.TrackGroup
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -33,6 +34,7 @@ import com.neo.neomovies.ui.settings.PlayerEngineMode
 import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
 import com.neo.player.mpv.MPVPlayer
+import com.neo.neomovies.downloads.DownloadUtil
 import java.io.File
 import java.net.URLDecoder
 import kotlinx.coroutines.channels.Channel
@@ -156,7 +158,11 @@ class PlayerViewModel(
                 )
             }
 
-            val dataSourceFactory = DefaultDataSource.Factory(getApplication(), httpDataSourceFactory)
+            val upstreamFactory = DefaultDataSource.Factory(getApplication(), httpDataSourceFactory)
+            val dataSourceFactory = CacheDataSource.Factory()
+                .setCache(DownloadUtil.getDownloadCache(getApplication()))
+                .setUpstreamDataSourceFactory(upstreamFactory)
+                .setCacheWriteDataSinkFactory(null)
             val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
 
             val extensionMode = if (isEmulator()) {

@@ -14,6 +14,57 @@ class CollapsRepository(
     private val context: Context,
     private val base: String = "https://api.luxembd.ws",
 ) {
+    data class HlsVariant(
+        val url: String,
+        val height: Int?,
+        val bandwidth: Int?,
+        val label: String,
+    )
+
+    suspend fun fetchHlsVariants(masterUrl: String): List<HlsVariant> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = Request.Builder().url(masterUrl).build()
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use emptyList<HlsVariant>()
+                    val body = response.body?.string().orEmpty()
+                    parseHlsVariants(masterUrl, body)
+                }
+            }.getOrDefault(emptyList())
+        }
+    }
+
+    private fun parseHlsVariants(baseUrl: String, playlist: String): List<HlsVariant> {
+        val lines = playlist.lines()
+        val variants = ArrayList<HlsVariant>()
+        var currentInfo: String? = null
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.startsWith("#EXT-X-STREAM-INF", ignoreCase = true)) {
+                currentInfo = trimmed
+                continue
+            }
+            if (currentInfo != null && trimmed.isNotBlank() && !trimmed.startsWith("#")) {
+                val uri = resolveUrl(baseUrl, trimmed)
+                val info = currentInfo ?: ""
+                val height = Regex("RESOLUTION=\\d+x(\\d+)").find(info)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val bandwidth = Regex("BANDWIDTH=(\\d+)").find(info)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                val label = height?.let { "${it}p" } ?: bandwidth?.let { "${it / 1000} kbps" } ?: "Auto"
+                variants.add(HlsVariant(url = uri, height = height, bandwidth = bandwidth, label = label))
+                currentInfo = null
+            }
+        }
+        return variants.distinctBy { it.url }.sortedByDescending { it.height ?: 0 }
+    }
+
+    private fun resolveUrl(base: String, path: String): String {
+        return if (path.startsWith("http://") || path.startsWith("https://")) {
+            path
+        } else {
+            val idx = base.lastIndexOf('/')
+            if (idx == -1) path else base.substring(0, idx + 1) + path
+        }
+    }
     data class CollapsSubtitle(
         val url: String,
         val label: String,

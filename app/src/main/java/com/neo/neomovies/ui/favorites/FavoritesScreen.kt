@@ -1,6 +1,5 @@
 package com.neo.neomovies.ui.favorites
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,10 +37,8 @@ fun FavoritesScreen(
     onOpenDetails: (String) -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val isAuthorized = remember {
-        val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
-        !prefs.getString("token", null).isNullOrBlank()
-    }
+    val authState by com.neo.neomovies.auth.NeoIdAuthManager.authState().collectAsStateWithLifecycleCompat()
+    val isAuthorized = authState.isAuthorized
 
     if (!isAuthorized) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

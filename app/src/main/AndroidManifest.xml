@@ -55,6 +55,10 @@
             android:name=".torrserver.TorServerService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
+        <service
+            android:name="com.neo.neomovies.downloads.NeoDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

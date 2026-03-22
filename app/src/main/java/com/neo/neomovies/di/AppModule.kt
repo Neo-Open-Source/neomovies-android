@@ -16,6 +16,7 @@ import com.neo.neomovies.ui.list.CategoryListViewModel
 import com.neo.neomovies.ui.details.DetailsViewModel
 import com.neo.neomovies.ui.search.SearchViewModel
 import com.neo.neomovies.ui.watch.WatchSelectorViewModel
+import com.neo.neomovies.ui.downloads.DownloadsViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.context.GlobalContext
 import org.koin.dsl.module
@@ -53,4 +54,5 @@ val appModule = module {
 
     viewModel { SearchViewModel(repository = get()) }
     viewModel { CreditsViewModel(repository = get()) }
+    viewModel { DownloadsViewModel(application = GlobalContext.get().get()) }
 }

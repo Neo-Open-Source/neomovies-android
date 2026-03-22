@@ -70,7 +70,8 @@ fun createOkHttpClient(): OkHttpClient {
         }.getOrNull()
 
         if (refreshed == null) {
-            prefs.edit().remove("token").remove("refresh_token").apply()
+            Log.w("OkHttp", "Auth refresh failed; clearing stored auth")
+            com.neo.neomovies.auth.NeoIdAuthManager(authContext).logout()
             return@Authenticator null
         }
 

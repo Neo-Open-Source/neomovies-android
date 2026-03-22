@@ -33,6 +33,7 @@ import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.MediaPosterCard
 import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import com.neo.neomovies.ui.navigation.CategoryType
+import com.neo.neomovies.data.network.OfflineManager
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import androidx.compose.material.icons.Icons
@@ -47,7 +48,34 @@ fun CategoryListScreen(
 ) {
     val viewModel: CategoryListViewModel = koinViewModel(parameters = { parametersOf(categoryType) })
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
+    val offline by OfflineManager.isOffline().collectAsStateWithLifecycleCompat()
     val listState = rememberLazyGridState()
+
+    if (offline) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(categoryType.titleRes)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.nav_back),
+                            )
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(text = stringResource(R.string.offline_categories_unavailable))
+            }
+        }
+        return
+    }
 
     val shouldLoadNextPage: Boolean by remember {
         derivedStateOf {

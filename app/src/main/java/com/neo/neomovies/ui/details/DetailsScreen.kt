@@ -1,6 +1,5 @@
 package com.neo.neomovies.ui.details
  
-import android.content.Context
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +28,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.DisposableEffectResult
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +56,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.neo.neomovies.data.network.OfflineManager
+import com.neo.neomovies.downloads.DownloadsStore
+import com.neo.neomovies.downloads.DownloadType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,12 +71,77 @@ fun DetailsScreen(
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    val isAuthorized = remember {
-        val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
-        !prefs.getString("token", null).isNullOrBlank()
-    }
+    val authState by com.neo.neomovies.auth.NeoIdAuthManager.authState().collectAsStateWithLifecycleCompat()
+    val isAuthorized = authState.isAuthorized
+    val offline by OfflineManager.isOffline().collectAsStateWithLifecycleCompat()
+    var offlineEntries by remember { mutableStateOf(emptyList<com.neo.neomovies.downloads.DownloadEntry>()) }
     val watchedSummary = state.watchedSummary
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(offline) {
+        if (offline) {
+            val store = DownloadsStore(context)
+            val list = store.loadAll()
+            val normalized = sourceId.removeSuffix(".0")
+            val key = if (normalized.startsWith("kp_")) normalized else "kp_$normalized"
+            offlineEntries = list.filter { it.showId == key || it.showTitle == key }
+        }
+    }
+
+    if (offline) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = offlineEntries.firstOrNull()?.showTitle ?: "") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.nav_back),
+                            )
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            if (offlineEntries.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text = stringResource(R.string.offline_details_unavailable))
+                }
+            } else {
+                val movies = offlineEntries.filter { it.type == DownloadType.MOVIE }
+                val episodes = offlineEntries.filter { it.type == DownloadType.EPISODE }
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (movies.isNotEmpty()) {
+                        Text(text = stringResource(R.string.downloads_movies), style = MaterialTheme.typography.titleMedium)
+                        movies.forEach { m ->
+                            Text(text = m.title, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    if (episodes.isNotEmpty()) {
+                        Text(text = stringResource(R.string.downloads_series), style = MaterialTheme.typography.titleMedium)
+                        val grouped = episodes.groupBy { it.seasonNumber ?: 0 }.toSortedMap()
+                        grouped.forEach { (season, eps) ->
+                            if (season > 0) {
+                                Text(text = "Season $season", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            eps.sortedBy { it.episodeNumber ?: 0 }.forEach { e ->
+                                val epLabel = e.episodeNumber?.let { "E$it" } ?: ""
+                                Text(text = "$epLabel ${e.title}".trim(), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
 
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
