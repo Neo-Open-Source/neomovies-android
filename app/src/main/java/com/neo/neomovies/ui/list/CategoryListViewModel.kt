@@ -45,7 +45,7 @@ class CategoryListViewModel(
                         isAppendLoading = false,
                         error = null,
                         page = 1,
-                        totalPages = (data.totalPages ?: 1).coerceAtLeast(1),
+                        totalPages = (data.effectiveTotalPages).coerceAtLeast(1),
                         items = data.results,
                     )
                 }
@@ -71,7 +71,7 @@ class CategoryListViewModel(
                     it.copy(
                         isAppendLoading = false,
                         error = null,
-                        totalPages = (data.totalPages ?: it.totalPages).coerceAtLeast(1),
+                        totalPages = (data.effectiveTotalPages).coerceAtLeast(1),
                         items = it.items + data.results,
                     )
                 }

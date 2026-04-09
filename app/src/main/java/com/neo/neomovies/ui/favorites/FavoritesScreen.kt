@@ -120,29 +120,15 @@ fun FavoritesScreen(
 
 private fun com.neo.neomovies.data.network.dto.FavoriteDto.toMediaDto(): MediaDto {
     val idValue: Any? = when {
-        !this.mediaId.isNullOrBlank() && this.mediaId.all { it.isDigit() } -> this.mediaId.toLong()
+        !this.mediaId.isNullOrBlank() && this.mediaId.removePrefix("kp_").all { it.isDigit() } ->
+            this.mediaId.removePrefix("kp_").toLongOrNull() ?: this.mediaId
         else -> this.mediaId
     }
-
-    val posterPreview = this.posterUrlPreview
-        ?: this.posterPath
-
     return MediaDto(
         id = idValue,
-        kinopoiskId = this.mediaId?.toIntOrNull(),
-        title = this.title ?: this.nameRu,
-        name = null,
-        nameRu = this.nameRu,
-        nameOriginal = this.nameEn,
-        posterUrlPreview = posterPreview,
-        posterUrl = this.posterPath,
-        posterPath = this.posterPath,
-        poster = null,
-        ratingKinopoisk = this.rating,
+        title = this.title,
+        posterUrl = this.posterUrl,
         rating = this.rating,
-        voteAverage = this.rating,
         year = this.year,
-        releaseDate = null,
-        firstAirDate = null,
     )
 }

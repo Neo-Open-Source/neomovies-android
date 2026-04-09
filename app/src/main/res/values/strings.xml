@@ -127,6 +127,8 @@
     <string name="downloads_active">Active</string>
     <string name="downloads_movies">Movies</string>
     <string name="downloads_series">Series</string>
+    <string name="downloads_empty">No downloads</string>
+    <string name="nav_downloads">Downloads</string>
     <string name="download_pause">Pause</string>
     <string name="download_resume">Resume</string>
     <string name="download_remove">Remove</string>

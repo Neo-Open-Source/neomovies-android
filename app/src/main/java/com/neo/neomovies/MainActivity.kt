@@ -113,16 +113,13 @@ class MainActivity : AppCompatActivity() {
     private fun handleAuthCallbackIfNeeded(intent: Intent) {
         val data: Uri = intent.data ?: return
         if (data.scheme == "neomovies" && data.host == "auth" && data.path == "/callback") {
-            val result = neoIdAuthManager.handleCallback(data)
-            when (result) {
-                is NeoIdAuthResult.Success -> {
-                    Thread {
-                        neoIdAuthManager.fetchAndPersistProfile()
-                        neoIdAuthManager.verifyAndPersistUser(result.token)
-                    }.start()
+            Thread {
+                val result = neoIdAuthManager.handleCallback(data)
+                when (result) {
+                    is NeoIdAuthResult.Success -> neoIdAuthManager.fetchAndPersistProfile()
+                    is NeoIdAuthResult.Error -> android.util.Log.e("MainActivity", "Auth callback error: ${result.message}")
                 }
-                is NeoIdAuthResult.Error -> Unit
-            }
+            }.start()
         }
     }
 }
@@ -141,6 +138,7 @@ fun NeoMoviesApp(
 
     val isTopLevelRoute = when (currentDestination?.route) {
         NavRoute.Home.route,
+        NavRoute.Downloads.route,
         NavRoute.Favorites.route,
         NavRoute.Profile.route,
         -> true
@@ -179,7 +177,7 @@ fun NeoMoviesApp(
                 animatedComposable(NavRoute.Downloads.route) {
                     val context = LocalContext.current
                     DownloadsScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = null,
                         onOpenDetails = { sourceId ->
                             if (sourceId.isNotBlank()) {
                                 navController.navigate(NavRoute.Details.create(sourceId))
@@ -195,7 +193,12 @@ fun NeoMoviesApp(
                             )
                         },
                         onPlayEntry = { entry ->
-                            val url = entry.originalUrl ?: return@DownloadsScreen
+                            val filePath = entry.filePath.takeIf { it.isNotBlank() }
+                            val url = if (filePath != null && java.io.File(filePath).exists()) {
+                                "file://$filePath"
+                            } else {
+                                entry.originalUrl ?: return@DownloadsScreen
+                            }
                             val kpId = entry.showId
                                 ?.removePrefix("kp_")
                                 ?.toIntOrNull()

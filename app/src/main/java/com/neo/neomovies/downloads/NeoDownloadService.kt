@@ -5,12 +5,13 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Scheduler
+import com.neo.neomovies.R
 
 class NeoDownloadService : DownloadService(
     1,
     DEFAULT_FOREGROUND_NOTIFICATION_UPDATE_INTERVAL,
     "downloads",
-    0,
+    R.string.downloads_channel_name,
     0,
 ) {
     override fun getDownloadManager(): DownloadManager {

@@ -33,4 +33,6 @@ object OfflineManager {
         val caps = cm.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
+
+    fun isOnline(context: Context): Boolean = hasNetwork(context)
 }

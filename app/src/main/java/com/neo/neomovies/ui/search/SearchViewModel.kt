@@ -86,7 +86,7 @@ class SearchViewModel(
                         isAppendLoading = false,
                         error = null,
                         items = newItems,
-                        totalPages = (data.totalPages ?: 1).coerceAtLeast(1),
+                        totalPages = (data.effectiveTotalPages).coerceAtLeast(1),
                     )
                 }
             } catch (t: Throwable) {

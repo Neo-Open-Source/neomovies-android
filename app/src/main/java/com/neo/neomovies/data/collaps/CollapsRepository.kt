@@ -93,8 +93,15 @@ class CollapsRepository(
     )
 
     suspend fun getSeasonsByKpId(kpId: Int): List<CollapsSeason> {
+        android.util.Log.d("CollapsRepository", "getSeasonsByKpId: kpId=$kpId")
         val html = fetchEmbedHtml("$base/embed/kp/$kpId")
-        val seasonsJson = extractSeasonsJson(html) ?: return emptyList()
+        android.util.Log.d("CollapsRepository", "getSeasonsByKpId: fetched HTML, length=${html.length}")
+        val seasonsJson = extractSeasonsJson(html)
+        if (seasonsJson == null) {
+            android.util.Log.w("CollapsRepository", "getSeasonsByKpId: no seasons JSON found")
+            return emptyList()
+        }
+        android.util.Log.d("CollapsRepository", "getSeasonsByKpId: seasonsJson length=${seasonsJson.length}")
 
         val arr = JSONArray(seasonsJson)
         val seasons = ArrayList<CollapsSeason>(arr.length())
@@ -115,6 +122,8 @@ class CollapsRepository(
                 val hls = eObj.optString("hls", "").takeIf { it.isNotBlank() }
                 val dasha = eObj.optString("dasha", "").takeIf { it.isNotBlank() }
                 val dash = eObj.optString("dash", "").takeIf { it.isNotBlank() }
+
+                android.util.Log.d("CollapsRepository", "getSeasonsByKpId: S${seasonNum}E${epNum} hls=$hls, dasha=$dasha, dash=$dash")
 
                 val mpd = (dasha ?: dash)
 
@@ -167,6 +176,7 @@ class CollapsRepository(
         }
 
         seasons.sortBy { it.season }
+        android.util.Log.d("CollapsRepository", "getSeasonsByKpId: returning ${seasons.size} seasons with ${seasons.sumOf { it.episodes.size }} total episodes")
         return seasons
     }
 

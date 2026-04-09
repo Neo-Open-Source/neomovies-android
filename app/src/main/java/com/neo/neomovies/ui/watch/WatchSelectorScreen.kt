@@ -25,6 +25,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -76,6 +77,7 @@ import com.neo.neomovies.ui.util.normalizeImageUrl
 import com.neo.neomovies.downloads.DownloadActions
 import com.neo.neomovies.downloads.DownloadUtil
 import com.neo.neomovies.downloads.MediaNameParser
+import com.neo.neomovies.downloads.CollapsDownloadQueue
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -139,32 +141,60 @@ fun WatchSelectorScreen(
     var qualityLoading by remember { mutableStateOf(false) }
     var qualityError by remember { mutableStateOf<String?>(null) }
 
+    val queueState by CollapsDownloadQueue.state.collectAsState()
+
     val effectiveTitle = state.details?.title?.takeIf { it.isNotBlank() }
         ?: state.details?.name?.takeIf { it.isNotBlank() }
 
-    fun downloadEpisodes(episodes: List<Episode>, seasonNumber: Int, qualityUrl: String? = null) {
-        val kpId = state.kinopoiskId
-        val showId = kpId?.let { "kp_$it" }
-        val showTitle = effectiveTitle
+    fun downloadSeason(seasonNumber: Int) {
+        val kpId = state.kinopoiskId ?: return
+        val showId = "kp_$kpId"
+        val showTitle = effectiveTitle ?: ""
         val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
             ?: resolveDetailsImageUrl(state.details?.backdropUrl)
-        episodes.forEach { ep ->
-            val voice = ep.voiceovers.firstOrNull() ?: return@forEach
-            val url = qualityUrl ?: voice.playbackUrl
-            val downloadId = "${showId}_s${seasonNumber}_e${ep.number}_${voice.id}"
-            DownloadActions.enqueueCollapsDownload(
-                context = context,
-                downloadId = downloadId,
-                url = url,
-                details = state.details,
-                title = "S${seasonNumber}E${ep.number}",
-                posterUrl = posterUrl,
+        val details = state.details ?: return
+        CollapsDownloadQueue.enqueue(
+            context = context,
+            collapsRepository = viewModel.collapsRepository,
+            task = com.neo.neomovies.downloads.CollapsDownloadTask(
+                kpId = kpId,
                 showId = showId,
                 showTitle = showTitle,
-                seasonNumber = seasonNumber,
-                episodeNumber = ep.number,
-            )
+                posterUrl = posterUrl,
+                details = details,
+                seasonFilter = seasonNumber,
+            ),
+        )
+    }
+
+    fun downloadEpisode(seasonNumber: Int, episodeNumber: Int) {
+        android.util.Log.d("WatchSelectorScreen", "downloadEpisode: season=$seasonNumber, episode=$episodeNumber")
+        val kpId = state.kinopoiskId ?: run {
+            android.util.Log.w("WatchSelectorScreen", "downloadEpisode: kinopoiskId is null")
+            return
         }
+        val showId = "kp_$kpId"
+        val showTitle = effectiveTitle ?: ""
+        val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
+            ?: resolveDetailsImageUrl(state.details?.backdropUrl)
+        val details = state.details ?: run {
+            android.util.Log.w("WatchSelectorScreen", "downloadEpisode: details is null")
+            return
+        }
+        android.util.Log.d("WatchSelectorScreen", "downloadEpisode: enqueueing kpId=$kpId, showTitle=$showTitle")
+        CollapsDownloadQueue.enqueue(
+            context = context,
+            collapsRepository = viewModel.collapsRepository,
+            task = com.neo.neomovies.downloads.CollapsDownloadTask(
+                kpId = kpId,
+                showId = showId,
+                showTitle = showTitle,
+                posterUrl = posterUrl,
+                details = details,
+                seasonFilter = seasonNumber,
+                episodeFilter = episodeNumber,
+            ),
+        )
     }
 
     // Create episode progress callback for Collaps
@@ -370,29 +400,26 @@ fun WatchSelectorScreen(
                         qualityVariants.forEach { v ->
                             Button(
                                 onClick = {
+                                    val kpId = state.kinopoiskId
+                                    val details = state.details
                                     val seasonNumber = pendingQualitySeason
-                                    if (seasonNumber != null && seasonNumber > 0) {
-                                        downloadEpisodes(pendingQualityEpisodes, seasonNumber, v.url)
-                                    } else if (pendingQualityEpisodes.isEmpty()) {
-                                        val kpId = state.kinopoiskId
-                                        val showId = kpId?.let { "kp_$it" }
+                                    if (kpId != null && details != null) {
+                                        val showId = "kp_$kpId"
+                                        val showTitle = effectiveTitle ?: ""
                                         val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
                                             ?: resolveDetailsImageUrl(state.details?.backdropUrl)
-                                        DownloadActions.enqueueCollapsDownload(
+                                        CollapsDownloadQueue.enqueue(
                                             context = context,
-                                            downloadId = "${showId}_movie_${System.currentTimeMillis()}",
-                                            url = v.url,
-                                            details = state.details,
-                                            title = effectiveTitle ?: "Movie",
-                                            posterUrl = posterUrl,
-                                            showId = showId,
-                                            showTitle = effectiveTitle,
-                                            seasonNumber = null,
-                                            episodeNumber = null,
+                                            collapsRepository = viewModel.collapsRepository,
+                                            task = com.neo.neomovies.downloads.CollapsDownloadTask(
+                                                kpId = kpId,
+                                                showId = showId,
+                                                showTitle = showTitle,
+                                                posterUrl = posterUrl,
+                                                details = details,
+                                                seasonFilter = if (seasonNumber != null && seasonNumber > 0) seasonNumber else null,
+                                            ),
                                         )
-                                    } else {
-                                        val seasons = state.tvSeasons.orEmpty()
-                                        seasons.forEach { downloadEpisodes(it.episodes, it.number, v.url) }
                                     }
                                     showQualityPicker = false
                                 },
@@ -478,7 +505,7 @@ fun WatchSelectorScreen(
                                                     title = "Season ${s.number}",
                                                     posterUrl = poster,
                                                     onClick = { viewModel.selectSeason(s.number) },
-                                                    onDownload = { downloadEpisodes(s.episodes, s.number) },
+                                                    onDownload = { downloadSeason(s.number) },
                                                 )
                                             }
                                         }
@@ -506,8 +533,12 @@ fun WatchSelectorScreen(
                                                 val downloadPercent = download?.percentDownloaded?.takeIf { it >= 0f }?.toInt()
                                                 val downloadState = download?.state
 
+                                                // Collaps download progress
+                                                val collapsDownloadId = "${showId}_s${selectedSeason}_e${ep.number}_collaps"
+                                                val collapsProgress = queueState.progress[collapsDownloadId]
+
                                                 val supportingContent: (@Composable () -> Unit)? =
-                                                    if (ep.isWatched || progressPercent != null || download != null) {
+                                                    if (ep.isWatched || progressPercent != null || download != null || collapsProgress != null) {
                                                         {
                                                             Column {
                                                                 if (ep.isWatched) {
@@ -519,6 +550,9 @@ fun WatchSelectorScreen(
                                                                     Text(text = stringResource(R.string.download_complete), color = MaterialTheme.colorScheme.primary)
                                                                 } else if (downloadPercent != null) {
                                                                     Text(text = stringResource(R.string.download_in_progress, downloadPercent), color = MaterialTheme.colorScheme.secondary)
+                                                                }
+                                                                if (collapsProgress != null) {
+                                                                    Text(text = stringResource(R.string.download_in_progress, collapsProgress), color = MaterialTheme.colorScheme.secondary)
                                                                 }
                                                             }
                                                         }
@@ -559,30 +593,33 @@ fun WatchSelectorScreen(
                                                         .padding(horizontal = 16.dp, vertical = 8.dp),
                                                     leadingContent = leadingContent,
                                                     trailingContent = {
-                                                        IconButton(
-                                                            enabled = download == null || downloadState == Download.STATE_FAILED,
-                                                            onClick = {
-                                                                val playbackUrl = voice?.playbackUrl ?: return@IconButton
-                                                                val showTitle = effectiveTitle
-                                                                val posterUrl = resolveDetailsImageUrl(state.details?.posterUrl)
-                                                                    ?: resolveDetailsImageUrl(state.details?.backdropUrl)
-                                                                val resolvedDownloadId = downloadId
-                                                                    ?: "${showId}_s${selectedSeason}_e${ep.number}_${voice?.id ?: "default"}"
-                                                                DownloadActions.enqueueCollapsDownload(
-                                                                    context = context,
-                                                                    downloadId = resolvedDownloadId,
-                                                                    url = playbackUrl,
-                                                                    details = state.details,
-                                                                    title = "S${selectedSeason}E${ep.number}",
-                                                                    posterUrl = posterUrl,
-                                                                    showId = showId,
-                                                                    showTitle = showTitle,
-                                                                    seasonNumber = selectedSeason,
-                                                                    episodeNumber = ep.number,
-                                                                )
-                                                            },
-                                                        ) {
-                                                            Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                                                        if (collapsProgress != null) {
+                                                            IconButton(
+                                                                onClick = {
+                                                                    CollapsDownloadQueue.cancel(collapsDownloadId, context)
+                                                                },
+                                                            ) {
+                                                                Box(contentAlignment = Alignment.Center) {
+                                                                    CircularProgressIndicator(
+                                                                        progress = { collapsProgress.toFloat() / 100f },
+                                                                        modifier = Modifier.size(24.dp),
+                                                                        strokeWidth = 2.dp,
+                                                                    )
+                                                                    Icon(
+                                                                        imageVector = Icons.Default.Close,
+                                                                        contentDescription = "Cancel",
+                                                                        modifier = Modifier.size(12.dp),
+                                                                    )
+                                                                }
+                                                            }
+                                                        } else {
+                                                            IconButton(
+                                                                onClick = {
+                                                                    downloadEpisode(selectedSeason ?: return@IconButton, ep.number)
+                                                                },
+                                                            ) {
+                                                                Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                                                            }
                                                         }
                                                     },
                                                 )
@@ -975,6 +1012,36 @@ fun WatchSelectorScreen(
             }
         }
     }
+
+    // Voice selection dialog from queue
+    if (queueState.showVoiceDialog) {
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { CollapsDownloadQueue.dismissVoiceDialog() },
+            sheetState = sheetState,
+        ) {
+            Text(
+                text = stringResource(R.string.lumex_select_voiceover),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 32.dp),
+            ) {
+                items(queueState.voices) { voice ->
+                    androidx.compose.material3.ListItem(
+                        headlineContent = { Text(text = voice) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                CollapsDownloadQueue.selectVoice(context, viewModel.collapsRepository, voice)
+                            },
+                    )
+                }
+            }
+        }
+    }
 }
 
 private fun formatFileSize(size: Long): String {
@@ -1030,7 +1097,13 @@ private fun SeasonCard(
                 )
                 IconButton(
                     onClick = onDownload,
-                    modifier = Modifier.align(Alignment.TopEnd),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                        ),
                 ) {
                     Icon(imageVector = Icons.Default.Download, contentDescription = null)
                 }

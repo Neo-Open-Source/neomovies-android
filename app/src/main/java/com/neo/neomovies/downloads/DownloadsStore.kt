@@ -70,6 +70,18 @@ class DownloadsStore(private val context: Context) {
 
     fun removeById(id: String) {
         synchronized(lock) {
+            val entry = loadAll().firstOrNull { it.id == id }
+            // Delete the file or folder associated with this entry
+            if (entry != null) {
+                val f = java.io.File(entry.filePath)
+                // If filePath is master.m3u8 inside a folder, delete the whole folder
+                val dir = f.parentFile
+                if (dir != null && dir.isDirectory && dir.name == id) {
+                    dir.deleteRecursively()
+                } else {
+                    f.delete()
+                }
+            }
             val all = loadAll().filterNot { it.id == id }
             saveAll(all)
         }

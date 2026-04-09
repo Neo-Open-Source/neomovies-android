@@ -169,24 +169,12 @@ private fun com.neo.neomovies.data.network.dto.FavoriteDto.toMediaDto(): com.neo
         else -> this.mediaId
     }
 
-    val posterPreview = this.posterUrlPreview ?: this.posterPath
-
     return com.neo.neomovies.data.network.dto.MediaDto(
         id = idValue,
-        kinopoiskId = this.mediaId?.toIntOrNull(),
         title = this.title ?: this.nameRu,
-        name = null,
-        nameRu = this.nameRu,
-        nameOriginal = this.nameEn,
-        posterUrlPreview = posterPreview,
-        posterUrl = this.posterPath,
-        posterPath = this.posterPath,
-        poster = null,
-        ratingKinopoisk = this.rating,
+        originalTitle = this.nameEn,
+        posterUrl = this.posterUrlPreview ?: this.posterPath,
         rating = this.rating,
-        voteAverage = this.rating,
         year = this.year,
-        releaseDate = null,
-        firstAirDate = null,
     )
 }

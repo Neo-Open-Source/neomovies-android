@@ -29,26 +29,21 @@ fun MediaPosterCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val title = item.title ?: item.nameRu ?: item.name ?: item.nameOriginal ?: ""
+    val title = item.title ?: item.name ?: ""
     val rawId = when (val v = item.id) {
         is Number -> v.toLong().toString()
         else -> v?.toString()
     }
-    val posterFromId = normalizeImageUrl(item.kinopoiskId?.toString() ?: rawId)
-    val posterFallback = listOfNotNull(
-        item.posterUrlPreview,
-        item.posterUrl,
-        item.posterPath,
-        item.poster,
-    ).firstOrNull { it.isNotBlank() }
-    val poster = posterFromId ?: posterFallback?.let { value ->
+    // API returns posterUrl as relative path like /api/v1/images/kp_small/12345
+    val posterRaw = item.posterUrl ?: item.posterPath
+    val poster = posterRaw?.let { value ->
         when {
             value.startsWith("http") -> value
             value.startsWith("/") -> BuildConfig.API_BASE_URL.trimEnd('/') + value
-            value.startsWith("api/") || value.startsWith("api/v1/") -> BuildConfig.API_BASE_URL.trimEnd('/') + "/" + value
-            else -> value
+            value.startsWith("api/") -> BuildConfig.API_BASE_URL.trimEnd('/') + "/" + value
+            else -> normalizeImageUrl(rawId) ?: value
         }
-    }
+    } ?: normalizeImageUrl(rawId)
 
     Column(
         modifier = modifier.let { m -> if (onClick != null) m.clickable { onClick() } else m },

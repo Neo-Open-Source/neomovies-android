@@ -82,7 +82,7 @@ data class Movie(
 class WatchSelectorViewModel(
     private val moviesRepository: MoviesRepository,
     private val torrentsRepository: JacredTorrentsRepository,
-    private val collapsRepository: CollapsRepository,
+    val collapsRepository: CollapsRepository,
     private val context: Context,
     private val sourceId: String,
 ) : ViewModel() {

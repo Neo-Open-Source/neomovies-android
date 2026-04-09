@@ -16,39 +16,34 @@ interface MoviesApi {
     @GET("api/v1/movies/popular")
     suspend fun getPopularMovies(
         @Query("page") page: Int = 1,
-        @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaResponseDto>
 
     @GET("api/v1/movies/top-rated")
     suspend fun getTopMovies(
         @Query("page") page: Int = 1,
-        @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaResponseDto>
 
     @GET("api/v1/tv/top-rated")
     suspend fun getTopTv(
         @Query("page") page: Int = 1,
-        @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaResponseDto>
 
     @GET("api/v1/movie/{id}")
     suspend fun getDetails(
         @Path("id") id: String,
-        @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaDetailsDto>
 
-    @GET("api/v1/movies/search")
+    @GET("api/v1/search")
     suspend fun searchMovies(
         @Query("query") query: String,
         @Query("page") page: Int = 1,
-        @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaResponseDto>
 
-    @GET("api/v1/tv/search")
+    // Kept for compatibility but routes to same endpoint
+    @GET("api/v1/search")
     suspend fun searchTv(
         @Query("query") query: String,
         @Query("page") page: Int = 1,
-        @Query("lang") lang: String = "ru",
     ): ApiEnvelopeDto<MediaResponseDto>
 
     @GET("api/v1/support/list")

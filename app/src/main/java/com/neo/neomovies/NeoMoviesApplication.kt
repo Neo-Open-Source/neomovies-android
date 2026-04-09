@@ -40,6 +40,37 @@ class NeoMoviesApplication : Application() {
                 .okHttpClient(okHttpClient)
                 .build(),
         )
+
+        // Remove any stale Collaps downloads from Media3's DB —
+        // they used signed URLs that are now expired (410).
+        purgeStalledCollapsDownloads()
+    }
+
+    private fun purgeStalledCollapsDownloads() {
+        try {
+            val dm = com.neo.neomovies.downloads.DownloadUtil.getDownloadManager(this)
+            // DownloadManager.currentDownloads only returns active ones.
+            // Use the download index to get ALL stored downloads including queued/failed.
+            val index = dm.downloadIndex
+            val cursor = index.getDownloads()
+            val idsToRemove = mutableListOf<String>()
+            while (cursor.moveToNext()) {
+                val download = cursor.download
+                val id = download.request.id
+                if (id.contains("_collaps") || download.request.uri.scheme == "collaps") {
+                    idsToRemove.add(id)
+                }
+            }
+            cursor.close()
+            idsToRemove.forEach { id ->
+                androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
+                    this,
+                    com.neo.neomovies.downloads.NeoDownloadService::class.java,
+                    id,
+                    false,
+                )
+            }
+        } catch (_: Exception) {}
     }
 
     companion object {

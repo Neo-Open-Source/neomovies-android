@@ -1,10 +1,12 @@
 package com.neo.neomovies.ui.details
  
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,20 +14,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ModalBottomSheet
 import androidx.media3.exoplayer.offline.DownloadService
 import com.neo.neomovies.downloads.NeoDownloadService
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
@@ -61,14 +70,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.neo.neomovies.data.network.OfflineManager
+import com.neo.neomovies.downloads.CollapsDownloadQueue
+import com.neo.neomovies.downloads.CollapsDownloadTask
 import com.neo.neomovies.downloads.DownloadsStore
 import com.neo.neomovies.downloads.DownloadType
 import org.koin.core.context.GlobalContext
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberCoroutineScope
 import com.neo.neomovies.downloads.DownloadUtil
-import com.neo.neomovies.downloads.DownloadActions
 import com.neo.neomovies.data.collaps.CollapsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,12 +106,41 @@ fun DetailsScreen(
     }
 
     val scope = rememberCoroutineScope()
-    val collapsRepository = remember { GlobalContext.get().koin.get<CollapsRepository>() }
+    val collapsRepository = remember { GlobalContext.get().get<CollapsRepository>() }
     val downloadManager = remember { DownloadUtil.getDownloadManager(context) }
     var activeDownloads by remember { mutableStateOf(downloadManager.currentDownloads) }
     var downloadProgress by remember { mutableStateOf<Int?>(null) }
     var downloadActiveCount by remember { mutableStateOf(0) }
     var downloadTotalCount by remember { mutableStateOf(0) }
+
+    // Voice selection dialog from queue
+    val queueState by CollapsDownloadQueue.state.collectAsState()
+    if (queueState.showVoiceDialog) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { CollapsDownloadQueue.dismissVoiceDialog() },
+        ) {
+            Text(
+                text = stringResource(R.string.lumex_select_voiceover),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 32.dp),
+            ) {
+                items(queueState.voices) { voice ->
+                    androidx.compose.material3.ListItem(
+                        headlineContent = { Text(voice) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                CollapsDownloadQueue.selectVoice(context, collapsRepository, voice)
+                            },
+                    )
+                }
+            }
+        }
+    }
 
     val deleteDownloads = {
         val key = downloadKey
@@ -167,56 +205,24 @@ fun DetailsScreen(
     }
 
     val onDownloadAll: () -> Unit = {
-        val details = state.details ?: return@onDownloadAll
-        val kpId = details.externalIds?.kp
+        val details = state.details
+        val kpId = details?.externalIds?.kp
             ?: sourceId.removeSuffix(".0").removePrefix("kp_").toIntOrNull()
-            ?: return@onDownloadAll
-        val showId = "kp_$kpId"
-        val showTitle = details.title ?: details.name ?: ""
-        val posterUrl = normalizeImageUrl(details.posterUrl ?: details.backdropUrl ?: kpId.toString())
-
-        scope.launch {
-            val seasons = collapsRepository.getSeasonsByKpId(kpId)
-            if (seasons.isNotEmpty()) {
-                seasons.forEach { season ->
-                    season.episodes.forEach { ep ->
-                        val url = ep.hlsUrl ?: ep.mpdUrl
-                        if (!url.isNullOrBlank()) {
-                            val downloadId = "${showId}_s${season.season}_e${ep.episode}_collaps"
-                            DownloadActions.enqueueCollapsDownload(
-                                context = context,
-                                downloadId = downloadId,
-                                url = url,
-                                details = details,
-                                title = "S${season.season}E${ep.episode}",
-                                posterUrl = posterUrl,
-                                showId = showId,
-                                showTitle = showTitle,
-                                seasonNumber = season.season,
-                                episodeNumber = ep.episode,
-                            )
-                        }
-                    }
-                }
-            } else {
-                val movie = collapsRepository.getMovieByKpId(kpId)
-                val url = movie?.hlsUrl ?: movie?.mpdUrl
-                if (!url.isNullOrBlank()) {
-                    val downloadId = "${showId}_movie_${System.currentTimeMillis()}"
-                    DownloadActions.enqueueCollapsDownload(
-                        context = context,
-                        downloadId = downloadId,
-                        url = url,
-                        details = details,
-                        title = showTitle,
-                        posterUrl = posterUrl,
-                        showId = showId,
-                        showTitle = showTitle,
-                        seasonNumber = null,
-                        episodeNumber = null,
-                    )
-                }
-            }
+        if (details != null && kpId != null) {
+            val showId = "kp_$kpId"
+            val showTitle = details.title ?: details.name ?: ""
+            val posterUrl = normalizeImageUrl(details.posterUrl ?: details.backdropUrl ?: kpId.toString())
+            CollapsDownloadQueue.enqueue(
+                context = context,
+                collapsRepository = collapsRepository,
+                task = CollapsDownloadTask(
+                    kpId = kpId,
+                    showId = showId,
+                    showTitle = showTitle,
+                    posterUrl = posterUrl,
+                    details = details,
+                ),
+            )
         }
     }
 

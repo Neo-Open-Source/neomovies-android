@@ -38,14 +38,14 @@ fun TvMovieCard(
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         ) {
             AsyncImage(
-                model = normalizeImageUrl(item.posterUrlPreview ?: item.posterUrl ?: item.posterPath),
+                model = normalizeImageUrl(item.posterUrl ?: item.posterPath),
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(220.dp),
             )
         }
         Text(
-            text = item.title ?: item.name ?: item.nameRu ?: "",
+            text = item.title ?: item.name ?: "",
             maxLines = 1,
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp),

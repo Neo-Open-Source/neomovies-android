@@ -3,6 +3,7 @@ package com.neo.neomovies.downloads
 import android.content.Context
 import android.net.Uri
 import androidx.media3.common.util.NotificationUtil
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DefaultDataSource
@@ -18,6 +19,7 @@ import com.neo.neomovies.R
 import java.io.File
 import java.util.concurrent.Executors
 
+@UnstableApi
 object DownloadUtil {
     private const val CHANNEL_ID = "downloads"
 
@@ -89,15 +91,25 @@ object DownloadUtil {
         }
     }
 
-    fun buildProgressNotification(context: Context, downloads: List<Download>, notMetRequirements: Int = 0) =
-        getNotificationHelper(context).buildProgressNotification(
+    fun buildProgressNotification(context: Context, downloads: List<Download>, notMetRequirements: Int = 0): android.app.Notification {
+        val message = when {
+            downloads.size == 1 -> {
+                val id = downloads[0].request.id
+                val seasonEp = Regex("_s(\\d+)_e(\\d+)_").find(id)
+                if (seasonEp != null) "S${seasonEp.groupValues[1]}E${seasonEp.groupValues[2]}" else null
+            }
+            downloads.size > 1 -> "${downloads.size} files"
+            else -> null
+        }
+        return getNotificationHelper(context).buildProgressNotification(
             context.applicationContext,
             android.R.drawable.stat_sys_download,
             null,
-            null,
+            message,
             downloads,
             notMetRequirements
         )
+    }
 
     fun ensureChannel(context: Context) {
         NotificationUtil.createNotificationChannel(

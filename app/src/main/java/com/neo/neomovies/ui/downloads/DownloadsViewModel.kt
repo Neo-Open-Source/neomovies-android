@@ -9,6 +9,8 @@ import com.neo.neomovies.downloads.DownloadsStore
 import com.neo.neomovies.downloads.DownloadUtil
 import com.neo.neomovies.downloads.MediaNameParser
 import androidx.media3.exoplayer.offline.Download
+import com.neo.neomovies.downloads.CollapsDownloadQueue
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -36,6 +38,8 @@ data class DownloadsUiState(
     val movies: List<DownloadEntry> = emptyList(),
     val shows: List<DownloadGroupItem.ShowItem> = emptyList(),
     val active: List<Download> = emptyList(),
+    /** downloadId -> 0..100 for our OkHttp downloads */
+    val collapsProgress: Map<String, Int> = emptyMap(),
 )
 
 class DownloadsViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,6 +52,14 @@ class DownloadsViewModel(application: Application) : AndroidViewModel(applicatio
     init {
         refresh()
         pollDownloads()
+        // Observe CollapsDownloadQueue progress
+        viewModelScope.launch {
+            CollapsDownloadQueue.state.collect { queueState ->
+                _state.update { it.copy(collapsProgress = queueState.progress) }
+                // Refresh store when a download completes (progress removed from map)
+                refresh()
+            }
+        }
     }
 
     fun refresh() {

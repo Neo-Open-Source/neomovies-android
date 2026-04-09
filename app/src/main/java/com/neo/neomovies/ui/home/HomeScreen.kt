@@ -63,7 +63,12 @@ fun HomeScreen(
                 )
             },
             onPlayEntry = { entry ->
-                val url = entry.originalUrl ?: return@DownloadsScreen
+                val filePath = entry.filePath.takeIf { it.isNotBlank() }
+                val url = if (filePath != null && java.io.File(filePath).exists()) {
+                    "file://$filePath"
+                } else {
+                    entry.originalUrl ?: return@DownloadsScreen
+                }
                 val kpId = entry.showId
                     ?.removePrefix("kp_")
                     ?.toIntOrNull()
@@ -216,7 +221,10 @@ private fun HomeSection(
                         is Number -> v.toLong().toString()
                         else -> v?.toString()
                     }
-                    val sourceId = rawId?.let { if (it.contains("_")) it else "kp_$it" }
+                    // API returns id as "kp_12345" already
+                    val sourceId = rawId?.let {
+                        if (it.contains("_")) it else "kp_$it"
+                    }
                     MediaPosterCard(
                         item = item,
                         modifier = Modifier.width(cardWidth),
