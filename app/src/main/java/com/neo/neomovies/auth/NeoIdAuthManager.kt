@@ -192,15 +192,12 @@ class NeoIdAuthManager(
         val token = uri.getQueryParameter("token")
         val refreshToken = uri.getQueryParameter("refresh_token")
             ?: uri.getQueryParameter("refreshToken")
+        val code = uri.getQueryParameter("code")
         val error = uri.getQueryParameter("error")
         val stateParam = uri.getQueryParameter("state")
 
         if (error != null) {
             return NeoIdAuthResult.Error(message = error)
-        }
-
-        if (token.isNullOrBlank()) {
-            return NeoIdAuthResult.Error(message = "Пустой токен Neo ID")
         }
 
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -209,7 +206,62 @@ class NeoIdAuthManager(
             return NeoIdAuthResult.Error(message = "Некорректный state")
         }
 
-        // Exchange the neo-id service token for neomovies-api tokens
+        // OIDC flow: received authorization code — exchange it for tokens via neomovies-api
+        if (!code.isNullOrBlank()) {
+            return exchangeCodeViaApi(code, stateParam)
+        }
+
+        // Legacy service token flow
+        if (token.isNullOrBlank()) {
+            return NeoIdAuthResult.Error(message = "Пустой токен Neo ID")
+        }
+
+        return exchangeTokenViaApi(token, refreshToken)
+    }
+
+    private fun exchangeCodeViaApi(code: String, state: String?): NeoIdAuthResult {
+        // Exchange OIDC code for neomovies-api tokens via /api/v1/auth/neo-id/callback
+        val json = JSONObject().apply {
+            put("code", code)
+            if (state != null) put("state", state)
+        }
+        val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/api/v1/auth/neo-id/callback")
+            .post(body)
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return NeoIdAuthResult.Error(message = "Callback failed: HTTP ${response.code}")
+                }
+                val respBody = response.body?.string().orEmpty()
+                Log.d("NeoID", "code exchange response: $respBody")
+                val obj = JSONObject(respBody)
+                val accessToken = obj.optString("accessToken", "").takeIf { it.isNotBlank() }
+                    ?: return NeoIdAuthResult.Error(message = "Нет accessToken в ответе")
+                val newRefreshToken = obj.optString("refreshToken", "").takeIf { it.isNotBlank() }
+                val user = obj.optJSONObject("user")
+
+                val authPrefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
+                authPrefs.edit {
+                    putString(KEY_TOKEN, accessToken)
+                    if (!newRefreshToken.isNullOrBlank()) putString(KEY_REFRESH_TOKEN, newRefreshToken)
+                    user?.optString("email")?.takeIf { it.isNotBlank() }?.let { putString(KEY_EMAIL, it) }
+                    user?.optString("name")?.takeIf { it.isNotBlank() }?.let { putString(KEY_DISPLAY_NAME, it) }
+                    user?.optString("avatar")?.takeIf { it.isNotBlank() }?.let { putString(KEY_AVATAR, it) }
+                }
+                refreshAuthState(context, reason = "code_exchange")
+                NeoIdAuthResult.Success(token = accessToken)
+            }
+        } catch (e: Exception) {
+            Log.e("NeoID", "Code exchange exception", e)
+            NeoIdAuthResult.Error(message = e.message ?: "Ошибка обмена кода")
+        }
+    }
+
+    private fun exchangeTokenViaApi(token: String, refreshToken: String?): NeoIdAuthResult {
         val json = JSONObject().apply { put("access_token", token) }
         val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
         val request = Request.Builder()
@@ -225,7 +277,6 @@ class NeoIdAuthManager(
                 val respBody = response.body?.string().orEmpty()
                 Log.d("NeoID", "callback response: $respBody")
                 val obj = JSONObject(respBody)
-                // neomovies-api returns: { accessToken, refreshToken, user: { id, neo_id, email, name, avatar, is_admin } }
                 val accessToken = obj.optString("accessToken", "").takeIf { it.isNotBlank() }
                     ?: return NeoIdAuthResult.Error(message = "Нет accessToken в ответе")
                 val newRefreshToken = obj.optString("refreshToken", "").takeIf { it.isNotBlank() }
@@ -234,7 +285,6 @@ class NeoIdAuthManager(
                 val authPrefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
                 authPrefs.edit {
                     putString(KEY_TOKEN, accessToken)
-                    // Prefer refresh token from neomovies-api, fall back to neo-id's
                     val rt = newRefreshToken ?: refreshToken
                     if (!rt.isNullOrBlank()) putString(KEY_REFRESH_TOKEN, rt)
                     user?.optString("email")?.takeIf { it.isNotBlank() }?.let { putString(KEY_EMAIL, it) }
