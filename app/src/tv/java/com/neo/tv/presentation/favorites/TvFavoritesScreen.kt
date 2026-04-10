@@ -165,15 +165,15 @@ private fun FavoritesFilterRow(
 
 private fun com.neo.neomovies.data.network.dto.FavoriteDto.toMediaDto(): com.neo.neomovies.data.network.dto.MediaDto {
     val idValue: Any? = when {
-        !this.mediaId.isNullOrBlank() && this.mediaId.all { it.isDigit() } -> this.mediaId.toLong()
+        !this.mediaId.isNullOrBlank() && this.mediaId.removePrefix("kp_").all { it.isDigit() } ->
+            this.mediaId.removePrefix("kp_").toLongOrNull() ?: this.mediaId
         else -> this.mediaId
     }
 
     return com.neo.neomovies.data.network.dto.MediaDto(
         id = idValue,
-        title = this.title ?: this.nameRu,
-        originalTitle = this.nameEn,
-        posterUrl = this.posterUrlPreview ?: this.posterPath,
+        title = this.title,
+        posterUrl = this.posterUrl,
         rating = this.rating,
         year = this.year,
     )
