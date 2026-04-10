@@ -66,7 +66,7 @@ android {
 
         val envVersion = parseVersionName(System.getenv("APP_VERSION"))
         val tagVersion = parseVersionName(System.getenv("GITHUB_REF_NAME"))
-        val finalVersionName = envVersion ?: tagVersion ?: "0.1.0"
+        val finalVersionName = envVersion ?: tagVersion ?: "0.1.0-pre5"
         versionName = finalVersionName
         versionCode = computeVersionCode(finalVersionName)
 
