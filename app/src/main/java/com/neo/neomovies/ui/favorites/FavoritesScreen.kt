@@ -106,7 +106,8 @@ fun FavoritesScreen(
                 items(state.items) { item ->
                     val media = item.toMediaDto()
                     val mediaId = item.mediaId
-                    val sourceId = mediaId?.let { "kp_$it" }
+                    // mediaId from API already has "kp_" prefix (e.g. "kp_12345")
+                    val sourceId = mediaId?.let { if (it.startsWith("kp_")) it else "kp_$it" }
                     MediaPosterCard(
                         item = media,
                         modifier = Modifier.fillMaxWidth(),

@@ -6,7 +6,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.koin.core.context.GlobalContext
 import java.io.File
 
 /**
@@ -36,8 +35,13 @@ object CollapsHlsDownloader {
         outputDir: File,
         onProgress: (Progress) -> Unit = {},
     ): DownloadResult = withContext(Dispatchers.IO) {
-        val okHttp = runCatching { GlobalContext.get().get<OkHttpClient>() }.getOrNull()
-            ?: OkHttpClient()
+        // Use a dedicated client without cache interceptors and with a longer read timeout
+        val okHttp = OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
 
         outputDir.mkdirs()
 
@@ -48,10 +52,14 @@ object CollapsHlsDownloader {
         val parsed = parseMaster(masterText, hlsUrl)
 
         if (parsed.videoVariants.isEmpty()) {
-            // Not a multi-variant stream — download directly as video.ts
+            // Not a multi-variant stream — treat the URL itself as a media playlist
             val videoFile = File(outputDir, "video.ts")
+            val singleDuration = parseTotalDuration(masterText)
             downloadSegments(okHttp, hlsUrl, videoFile, onProgress)
-            return@withContext DownloadResult(videoFile.absolutePath)
+            // Write a proper media playlist with real duration
+            val playlistFile = File(outputDir, "master.m3u8")
+            playlistFile.writeText(buildMediaPlaylist(videoFile, singleDuration))
+            return@withContext DownloadResult(playlistFile.absolutePath)
         }
 
         // 3. Pick best video variant
@@ -64,9 +72,10 @@ object CollapsHlsDownloader {
             } ?: parsed.audioTracks.first()
         } else null
 
-        // 5. Count total segments for progress
+        // 5. Count total segments for progress and compute duration
         val videoPlaylist = httpGet(okHttp, bestVideo.uri)
         val videoSegments = parseSegments(videoPlaylist, bestVideo.uri)
+        val videoDurationSec = parseTotalDuration(videoPlaylist)
 
         val audioSegments = if (audioTrack != null) {
             val audioPlaylist = httpGet(okHttp, audioTrack.uri)
@@ -109,7 +118,7 @@ object CollapsHlsDownloader {
             }.getOrNull()
         }
 
-        // 9. Write local master.m3u8
+        // 9. Write local master.m3u8 (multi-variant HLS pointing to media playlists)
         val masterFile = File(outputDir, "master.m3u8")
         masterFile.writeText(buildLocalMaster(
             videoFile = videoFile,
@@ -118,9 +127,19 @@ object CollapsHlsDownloader {
             audioLang = audioTrack?.lang,
             subtitles = subtitleFiles,
             videoInfo = bestVideo,
+            durationSec = videoDurationSec,
+            outputDir = outputDir,
         ))
 
-        DownloadResult(masterPath = masterFile.absolutePath)
+        // If there's no separate audio track, use a simple media playlist (no multi-variant needed)
+        // but still with the real duration so ExoPlayer shows it correctly.
+        return@withContext if (audioFile == null && subtitleFiles.isEmpty()) {
+            val simplePlaylist = File(outputDir, "master.m3u8")
+            simplePlaylist.writeText(buildMediaPlaylist(videoFile, videoDurationSec))
+            DownloadResult(masterPath = simplePlaylist.absolutePath)
+        } else {
+            DownloadResult(masterPath = masterFile.absolutePath)
+        }
     }
 
     // ── Manifest parsing ──────────────────────────────────────────────────────
@@ -192,6 +211,19 @@ object CollapsHlsDownloader {
             .map { resolveUrl(baseUrl, it) }
     }
 
+    /** Returns total duration in seconds by summing all #EXTINF values */
+    private fun parseTotalDuration(playlist: String): Double {
+        var total = 0.0
+        for (line in playlist.lines()) {
+            val trimmed = line.trim()
+            if (trimmed.startsWith("#EXTINF:", ignoreCase = true)) {
+                val value = trimmed.removePrefix("#EXTINF:").substringBefore(',').trim()
+                total += value.toDoubleOrNull() ?: 0.0
+            }
+        }
+        return total
+    }
+
     // ── Local master.m3u8 builder ─────────────────────────────────────────────
 
     private fun buildLocalMaster(
@@ -201,32 +233,60 @@ object CollapsHlsDownloader {
         audioLang: String?,
         subtitles: List<SubtitleFile>,
         videoInfo: VideoVariant,
+        durationSec: Double,
+        outputDir: File,
     ): String {
+        val videoPlaylistFile = File(outputDir, "video_playlist.m3u8")
+        videoPlaylistFile.writeText(buildMediaPlaylist(videoFile, durationSec))
+
+        val audioPlaylistFile = if (audioFile != null) {
+            val f = File(outputDir, "audio_playlist.m3u8")
+            f.writeText(buildMediaPlaylist(audioFile, durationSec))
+            f
+        } else null
+
+        val subtitlePlaylistFiles = subtitles.mapIndexed { idx, sub ->
+            val f = File(outputDir, "sub_playlist_$idx.m3u8")
+            f.writeText(buildMediaPlaylist(sub.file, durationSec))
+            SubtitleFile(name = sub.name, lang = sub.lang, file = f)
+        }
+
         val sb = StringBuilder()
         sb.appendLine("#EXTM3U")
         sb.appendLine("#EXT-X-VERSION:3")
 
-        // Audio group
-        if (audioFile != null) {
+        if (audioPlaylistFile != null) {
             val lang = audioLang?.takeIf { it.isNotBlank() } ?: "ru"
             val name = audioName?.takeIf { it.isNotBlank() } ?: "Audio"
-            sb.appendLine("""#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="$name",LANGUAGE="$lang",DEFAULT=YES,URI="${audioFile.name}"""")
+            sb.appendLine("""#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="$name",LANGUAGE="$lang",DEFAULT=YES,URI="${audioPlaylistFile.absolutePath}"""")
         }
 
-        // Subtitle groups
-        subtitles.forEachIndexed { idx, sub ->
+        subtitlePlaylistFiles.forEachIndexed { idx, sub ->
             val lang = sub.lang.takeIf { it.isNotBlank() } ?: "und"
-            sb.appendLine("""#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="${sub.name}",LANGUAGE="$lang",DEFAULT=${if (idx == 0) "YES" else "NO"},URI="${sub.file.name}"""")
+            sb.appendLine("""#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="${sub.name}",LANGUAGE="$lang",DEFAULT=${if (idx == 0) "YES" else "NO"},URI="${sub.file.absolutePath}"""")
         }
 
-        // Video stream
-        val audioAttr = if (audioFile != null) """,AUDIO="audio"""" else ""
-        val subsAttr = if (subtitles.isNotEmpty()) """,SUBTITLES="subs"""" else ""
+        val audioAttr = if (audioPlaylistFile != null) """,AUDIO="audio"""" else ""
+        val subsAttr = if (subtitlePlaylistFiles.isNotEmpty()) """,SUBTITLES="subs"""" else ""
         val res = videoInfo.resolution?.let { ",RESOLUTION=$it" } ?: ""
         sb.appendLine("""#EXT-X-STREAM-INF:BANDWIDTH=${videoInfo.bandwidth}$res$audioAttr$subsAttr""")
-        sb.appendLine(videoFile.name)
+        sb.appendLine(videoPlaylistFile.absolutePath)
 
         return sb.toString()
+    }
+
+    private fun buildMediaPlaylist(tsFile: File, durationSec: Double): String {
+        val dur = if (durationSec > 0.0) durationSec else 0.0
+        val targetDuration = dur.toLong().coerceAtLeast(1)
+        return buildString {
+            appendLine("#EXTM3U")
+            appendLine("#EXT-X-VERSION:3")
+            appendLine("#EXT-X-TARGETDURATION:$targetDuration")
+            appendLine("#EXT-X-MEDIA-SEQUENCE:0")
+            appendLine("#EXTINF:${"%.3f".format(dur)},")
+            appendLine(tsFile.absolutePath)
+            appendLine("#EXT-X-ENDLIST")
+        }
     }
 
     // ── HTTP helpers ──────────────────────────────────────────────────────────
@@ -248,13 +308,22 @@ object CollapsHlsDownloader {
     }
 
     private fun httpGetBytes(client: OkHttpClient, url: String): ByteArray {
-        val req = Request.Builder().url(url)
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-            .build()
-        return client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) error("HTTP ${resp.code} for $url")
-            resp.body?.bytes() ?: ByteArray(0)
+        var lastError: Exception? = null
+        repeat(3) { attempt ->
+            try {
+                val req = Request.Builder().url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    .build()
+                return client.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) error("HTTP ${resp.code} for $url")
+                    resp.body?.bytes() ?: ByteArray(0)
+                }
+            } catch (e: Exception) {
+                lastError = e
+                if (attempt < 2) Thread.sleep(1000L * (attempt + 1))
+            }
         }
+        throw lastError ?: error("Failed to download $url")
     }
 
     private fun downloadSegments(client: OkHttpClient, url: String, outputFile: File, onProgress: (Progress) -> Unit) {

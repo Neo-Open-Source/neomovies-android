@@ -112,17 +112,24 @@ fun createOkHttpClient(): OkHttpClient {
 
             chain.proceed(newRequest)
         }
-        // Online: add Cache-Control max-age so responses are cached
+        // Online: add Cache-Control max-age so responses are cached (skip for authenticated requests)
         .addNetworkInterceptor { chain ->
             val response = chain.proceed(chain.request())
-            val cacheControl = CacheControl.Builder()
-                .maxAge(CACHE_MAX_AGE_SECONDS, TimeUnit.SECONDS)
-                .build()
-            response.newBuilder()
-                .header("Cache-Control", cacheControl.toString())
-                .build()
+            val hasAuth = chain.request().header("Authorization") != null
+            if (hasAuth) {
+                response.newBuilder()
+                    .header("Cache-Control", "no-store")
+                    .build()
+            } else {
+                val cacheControl = CacheControl.Builder()
+                    .maxAge(CACHE_MAX_AGE_SECONDS, TimeUnit.SECONDS)
+                    .build()
+                response.newBuilder()
+                    .header("Cache-Control", cacheControl.toString())
+                    .build()
+            }
         }
-        // Offline: serve stale cache when no network
+        // Offline: serve stale cache when no network; if cache miss — return empty 200 instead of crashing 504
         .addInterceptor { chain ->
             var request = chain.request()
             val isOnline = com.neo.neomovies.data.network.OfflineManager.isOnline(authContext)
@@ -135,6 +142,19 @@ fun createOkHttpClient(): OkHttpClient {
                             .build()
                     )
                     .build()
+                val response = runCatching { chain.proceed(request) }.getOrNull()
+                // 504 = cache miss offline — return a synthetic empty error response instead of crashing
+                if (response == null || response.code == 504) {
+                    response?.close()
+                    return@addInterceptor okhttp3.Response.Builder()
+                        .request(chain.request())
+                        .protocol(okhttp3.Protocol.HTTP_1_1)
+                        .code(503)
+                        .message("Offline - no cache")
+                        .body(okhttp3.ResponseBody.create(null, ByteArray(0)))
+                        .build()
+                }
+                return@addInterceptor response
             }
             chain.proceed(request)
         }

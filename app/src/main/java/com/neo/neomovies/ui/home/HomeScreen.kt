@@ -54,13 +54,16 @@ fun HomeScreen(
         val context = androidx.compose.ui.platform.LocalContext.current
         DownloadsScreen(
             onDeleteEntry = { entry ->
-                com.neo.neomovies.downloads.DownloadsStore(context).removeById(entry.id)
-                androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
-                    context,
-                    com.neo.neomovies.downloads.NeoDownloadService::class.java,
-                    entry.id,
-                    false,
-                )
+                val store = com.neo.neomovies.downloads.DownloadsStore(context)
+                store.removeById(entry.id)
+                if (store.isExoDownload(entry.id)) {
+                    androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
+                        context,
+                        com.neo.neomovies.downloads.NeoDownloadService::class.java,
+                        entry.id,
+                        false,
+                    )
+                }
             },
             onPlayEntry = { entry ->
                 val filePath = entry.filePath.takeIf { it.isNotBlank() }

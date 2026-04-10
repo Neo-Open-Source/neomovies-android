@@ -87,6 +87,10 @@ class DownloadsStore(private val context: Context) {
         }
     }
 
+    /** Returns true if this entry is managed by ExoPlayer DownloadManager (torrent/http),
+     *  false if it's a Collaps download managed only by DownloadsStore. */
+    fun isExoDownload(id: String): Boolean = !id.contains("_collaps") && !id.startsWith("kp_")
+
     private fun saveAll(list: List<DownloadEntry>) {
         val arr = JSONArray()
         list.forEach { arr.put(toJson(it)) }

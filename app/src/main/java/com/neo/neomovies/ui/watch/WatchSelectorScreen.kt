@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -142,6 +143,15 @@ fun WatchSelectorScreen(
     var qualityError by remember { mutableStateOf<String?>(null) }
 
     val queueState by CollapsDownloadQueue.state.collectAsState()
+
+    val downloadsStore = remember { com.neo.neomovies.downloads.DownloadsStore(context) }
+    var completedDownloadIds by remember { mutableStateOf(setOf<String>()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            completedDownloadIds = downloadsStore.loadAll().map { it.id }.toSet()
+            delay(2000L)
+        }
+    }
 
     val effectiveTitle = state.details?.title?.takeIf { it.isNotBlank() }
         ?: state.details?.name?.takeIf { it.isNotBlank() }
@@ -593,6 +603,7 @@ fun WatchSelectorScreen(
                                                         .padding(horizontal = 16.dp, vertical = 8.dp),
                                                     leadingContent = leadingContent,
                                                     trailingContent = {
+                                                        val isDownloaded = completedDownloadIds.contains(collapsDownloadId)
                                                         if (collapsProgress != null) {
                                                             IconButton(
                                                                 onClick = {
@@ -611,6 +622,19 @@ fun WatchSelectorScreen(
                                                                         modifier = Modifier.size(12.dp),
                                                                     )
                                                                 }
+                                                            }
+                                                        } else if (isDownloaded) {
+                                                            IconButton(
+                                                                onClick = {
+                                                                    downloadsStore.removeById(collapsDownloadId)
+                                                                    completedDownloadIds = completedDownloadIds - collapsDownloadId
+                                                                },
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.Delete,
+                                                                    contentDescription = stringResource(R.string.download_remove),
+                                                                    tint = MaterialTheme.colorScheme.primary,
+                                                                )
                                                             }
                                                         } else {
                                                             IconButton(

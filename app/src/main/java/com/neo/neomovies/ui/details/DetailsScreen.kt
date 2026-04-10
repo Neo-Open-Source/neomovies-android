@@ -149,12 +149,14 @@ fun DetailsScreen(
             val items = store.loadAll().filter { it.showId == key }
             items.forEach { entry ->
                 store.removeById(entry.id)
-                DownloadService.sendRemoveDownload(
-                    context,
-                    NeoDownloadService::class.java,
-                    entry.id,
-                    false,
-                )
+                if (store.isExoDownload(entry.id)) {
+                    DownloadService.sendRemoveDownload(
+                        context,
+                        NeoDownloadService::class.java,
+                        entry.id,
+                        false,
+                    )
+                }
             }
         }
     }

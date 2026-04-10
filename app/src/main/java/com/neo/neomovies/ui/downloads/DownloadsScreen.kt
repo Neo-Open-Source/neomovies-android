@@ -160,7 +160,10 @@ fun DownloadsScreen(
                                             if (onPlayEntry != null) onPlayEntry(entry)
                                             else onOpenDetails?.invoke(entry.showId ?: "")
                                         },
-                                        onDelete = { onDeleteEntry?.invoke(entry) },
+                                        onDelete = {
+                                            viewModel.deleteEntry(entry)
+                                            onDeleteEntry?.invoke(entry)
+                                        },
                                     )
                                 }
                             }
@@ -192,13 +195,20 @@ fun DownloadsScreen(
                                     expandedSeasonNumber = if (expandedSeasonNumber == seasonNum) null else seasonNum
                                 },
                                 onDeleteShow = {
-                                    show.seasons.flatMap { it.episodes }.forEach { onDeleteEntry?.invoke(it) }
+                                    val eps = show.seasons.flatMap { it.episodes }
+                                    viewModel.deleteEntries(eps)
+                                    eps.forEach { onDeleteEntry?.invoke(it) }
+                                    expandedShowId = null
                                 },
                                 onDeleteSeason = { season ->
+                                    viewModel.deleteEntries(season.episodes)
                                     season.episodes.forEach { onDeleteEntry?.invoke(it) }
                                 },
                                 onPlayEpisode = { ep -> onPlayEntry?.invoke(ep) },
-                                onDeleteEpisode = { ep -> onDeleteEntry?.invoke(ep) },
+                                onDeleteEpisode = { ep ->
+                                    viewModel.deleteEntry(ep)
+                                    onDeleteEntry?.invoke(ep)
+                                },
                             )
                         }
                     }

@@ -52,14 +52,22 @@ class DownloadsViewModel(application: Application) : AndroidViewModel(applicatio
     init {
         refresh()
         pollDownloads()
-        // Observe CollapsDownloadQueue progress
         viewModelScope.launch {
             CollapsDownloadQueue.state.collect { queueState ->
                 _state.update { it.copy(collapsProgress = queueState.progress) }
-                // Refresh store when a download completes (progress removed from map)
                 refresh()
             }
         }
+    }
+
+    fun deleteEntry(entry: DownloadEntry) {
+        store.removeById(entry.id)
+        refresh()
+    }
+
+    fun deleteEntries(entries: List<DownloadEntry>) {
+        entries.forEach { store.removeById(it.id) }
+        refresh()
     }
 
     fun refresh() {

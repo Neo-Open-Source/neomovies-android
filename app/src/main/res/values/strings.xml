@@ -174,6 +174,7 @@
     <string name="search_hint">Enter title</string>
     <string name="search_start_typing">Start typing a query</string>
     <string name="search_nothing_found">Nothing found</string>
+    <string name="search_history_remove">Remove from history</string>
 
     <string name="pagination_prev">Previous</string>
     <string name="pagination_next">Next</string>

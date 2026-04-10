@@ -52,7 +52,7 @@ val appModule = module {
         WatchSelectorViewModel(moviesRepository = get(), torrentsRepository = get(), collapsRepository = get(), context = GlobalContext.get().get(), sourceId = sourceId)
     }
 
-    viewModel { SearchViewModel(repository = get()) }
+    viewModel { SearchViewModel(repository = get(), context = GlobalContext.get().get()) }
     viewModel { CreditsViewModel(repository = get()) }
     viewModel { DownloadsViewModel(application = GlobalContext.get().get()) }
 }
