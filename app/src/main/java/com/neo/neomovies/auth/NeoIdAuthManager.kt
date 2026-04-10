@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 private const val PREFS_NAME = "neo_id_prefs"
 private const val KEY_STATE = "neo_id_state"
+private const val KEY_CODE_VERIFIER = "neo_id_code_verifier"
 private const val AUTH_PREFS_NAME = "auth"
 private const val KEY_TOKEN = "token"
 private const val KEY_REFRESH_TOKEN = "refresh_token"
@@ -138,10 +139,17 @@ class NeoIdAuthManager(
         val state = UUID.randomUUID().toString()
         prefs.edit { putString(KEY_STATE, state) }
 
+        // Generate PKCE code_verifier and code_challenge
+        val codeVerifier = generateCodeVerifier()
+        val codeChallenge = generateCodeChallenge(codeVerifier)
+        prefs.edit { putString(KEY_CODE_VERIFIER, codeVerifier) }
+
         val callbackUrl = "neomovies://auth/callback"
         val json = JSONObject().apply {
             put("redirect_url", callbackUrl)
             put("state", state)
+            put("code_challenge", codeChallenge)
+            put("code_challenge_method", "S256")
         }
 
         val body = json.toString()
@@ -206,12 +214,14 @@ class NeoIdAuthManager(
             return NeoIdAuthResult.Error(message = "Некорректный state")
         }
 
-        // OIDC flow: received authorization code — exchange it for tokens via neomovies-api
+        // OIDC flow: user was already logged in to browser — got authorization code
+        // Exchange code → Neo ID access_token → neomovies-api tokens
         if (!code.isNullOrBlank()) {
-            return exchangeCodeViaApi(code, stateParam)
+            val neoToken = exchangeCodeForNeoToken(code) ?: return NeoIdAuthResult.Error(message = "Не удалось обменять code на токен")
+            return exchangeTokenViaApi(neoToken, null)
         }
 
-        // Legacy service token flow
+        // Service token flow (normal first-time login)
         if (token.isNullOrBlank()) {
             return NeoIdAuthResult.Error(message = "Пустой токен Neo ID")
         }
@@ -219,46 +229,67 @@ class NeoIdAuthManager(
         return exchangeTokenViaApi(token, refreshToken)
     }
 
-    private fun exchangeCodeViaApi(code: String, state: String?): NeoIdAuthResult {
-        // Exchange OIDC code for neomovies-api tokens via /api/v1/auth/neo-id/callback
-        val json = JSONObject().apply {
-            put("code", code)
-            if (state != null) put("state", state)
+    /** Exchange OIDC authorization code for a Neo ID access_token via /oauth/token using PKCE */
+    private fun exchangeCodeForNeoToken(code: String): String? {
+        val neoIdBase = BuildConfig.NEO_ID_BASE_URL.trimEnd('/')
+        val redirectUri = "neomovies://auth/callback"
+        val clientId = BuildConfig.NEO_ID_SITE_ID
+
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val codeVerifier = prefs.getString(KEY_CODE_VERIFIER, null)
+
+        if (clientId.isBlank()) {
+            Log.w("NeoID", "NEO_ID_SITE_ID not configured, cannot exchange code")
+            return null
         }
-        val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+
+        val formBuilder = okhttp3.FormBody.Builder()
+            .add("grant_type", "authorization_code")
+            .add("code", code)
+            .add("client_id", clientId)
+            .add("redirect_uri", redirectUri)
+
+        if (!codeVerifier.isNullOrBlank()) {
+            formBuilder.add("code_verifier", codeVerifier)
+        } else {
+            // Fallback: try client_secret if configured
+            val clientSecret = BuildConfig.NEO_ID_API_SECRET
+            if (clientSecret.isNotBlank()) {
+                formBuilder.add("client_secret", clientSecret)
+            }
+        }
+
         val request = Request.Builder()
-            .url(BuildConfig.API_BASE_URL.trimEnd('/') + "/api/v1/auth/neo-id/callback")
-            .post(body)
+            .url("$neoIdBase/oauth/token")
+            .post(formBuilder.build())
             .build()
 
         return try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return NeoIdAuthResult.Error(message = "Callback failed: HTTP ${response.code}")
+                    Log.e("NeoID", "Code exchange failed: HTTP ${response.code}")
+                    return null
                 }
-                val respBody = response.body?.string().orEmpty()
-                Log.d("NeoID", "code exchange response: $respBody")
-                val obj = JSONObject(respBody)
-                val accessToken = obj.optString("accessToken", "").takeIf { it.isNotBlank() }
-                    ?: return NeoIdAuthResult.Error(message = "Нет accessToken в ответе")
-                val newRefreshToken = obj.optString("refreshToken", "").takeIf { it.isNotBlank() }
-                val user = obj.optJSONObject("user")
-
-                val authPrefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
-                authPrefs.edit {
-                    putString(KEY_TOKEN, accessToken)
-                    if (!newRefreshToken.isNullOrBlank()) putString(KEY_REFRESH_TOKEN, newRefreshToken)
-                    user?.optString("email")?.takeIf { it.isNotBlank() }?.let { putString(KEY_EMAIL, it) }
-                    user?.optString("name")?.takeIf { it.isNotBlank() }?.let { putString(KEY_DISPLAY_NAME, it) }
-                    user?.optString("avatar")?.takeIf { it.isNotBlank() }?.let { putString(KEY_AVATAR, it) }
-                }
-                refreshAuthState(context, reason = "code_exchange")
-                NeoIdAuthResult.Success(token = accessToken)
+                val body = response.body?.string().orEmpty()
+                Log.d("NeoID", "oauth/token response: $body")
+                JSONObject(body).optString("access_token", "").takeIf { it.isNotBlank() }
             }
         } catch (e: Exception) {
             Log.e("NeoID", "Code exchange exception", e)
-            NeoIdAuthResult.Error(message = e.message ?: "Ошибка обмена кода")
+            null
         }
+    }
+
+    private fun generateCodeVerifier(): String {
+        val bytes = ByteArray(32)
+        java.security.SecureRandom().nextBytes(bytes)
+        return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+    }
+
+    private fun generateCodeChallenge(verifier: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(verifier.toByteArray(Charsets.US_ASCII))
+        return Base64.encodeToString(hash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
 
     private fun exchangeTokenViaApi(token: String, refreshToken: String?): NeoIdAuthResult {

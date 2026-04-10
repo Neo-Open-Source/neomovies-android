@@ -99,6 +99,20 @@ android {
                 ?: readDotEnv("NEO_ID_API_KEY")
                 ?: ""
         buildConfigField("String", "NEO_ID_API_KEY", "\"$neoIdApiKey\"")
+
+        val neoIdSiteId =
+            (project.findProperty("NEO_ID_SITE_ID") as String?)
+                ?: System.getenv("NEO_ID_SITE_ID")
+                ?: readDotEnv("NEO_ID_SITE_ID")
+                ?: ""
+        buildConfigField("String", "NEO_ID_SITE_ID", "\"$neoIdSiteId\"")
+
+        val neoIdApiSecret =
+            (project.findProperty("NEO_ID_API_SECRET") as String?)
+                ?: System.getenv("NEO_ID_API_SECRET")
+                ?: readDotEnv("NEO_ID_API_SECRET")
+                ?: ""
+        buildConfigField("String", "NEO_ID_API_SECRET", "\"$neoIdApiSecret\"")
     }
 
     lint {

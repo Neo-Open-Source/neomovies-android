@@ -97,6 +97,7 @@ jobs:
           CI: 'true'
           APP_VERSION: ${{ steps.meta.outputs.version }}
           NEO_ID_API_KEY: ${{ secrets.NEO_ID_API_KEY }}
+          NEO_ID_SITE_ID: ${{ secrets.NEO_ID_SITE_ID }}
         run: ./gradlew :app:${{ steps.meta.outputs.task }} :app:${{ steps.meta.outputs.tv_task }} --build-cache --no-daemon
 
       - name: Locate APKs

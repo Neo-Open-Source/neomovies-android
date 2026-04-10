@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.debounce
 
 class TvVideoPlayerState(
-    @IntRange(from = 0)
+    @param:IntRange(from = 0)
     private val hideSeconds: Int,
 ) {
     var isControlsVisible by mutableStateOf(true)
