@@ -23,10 +23,14 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build mobile universal APK
-        run: ./gradlew :app:assembleRelease
+        env:
+          CI: 'true'
+        run: ./gradlew :app:assembleRelease --build-cache --no-daemon
 
       - name: Build TV universal APK
-        run: ./gradlew :app:assembleTvRelease
+        env:
+          CI: 'true'
+        run: ./gradlew :app:assembleTvRelease --build-cache --no-daemon
 
       - name: Upload mobile APK
         uses: actions/upload-artifact@v4
