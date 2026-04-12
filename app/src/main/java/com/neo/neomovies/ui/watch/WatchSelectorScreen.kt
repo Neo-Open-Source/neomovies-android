@@ -1301,7 +1301,7 @@ private fun SeasonCard(
     title: String,
     posterUrl: String?,
     onClick: () -> Unit,
-    onDownload: () -> Unit,
+    onDownload: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -1324,17 +1324,19 @@ private fun SeasonCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-                IconButton(
-                    onClick = onDownload,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                        ),
-                ) {
-                    Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                if (onDownload != null) {
+                    IconButton(
+                        onClick = onDownload,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                            ),
+                    ) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                    }
                 }
             }
         }
