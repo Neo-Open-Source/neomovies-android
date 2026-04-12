@@ -72,6 +72,7 @@ import com.neo.neomovies.R
 import com.neo.neomovies.torrserver.TorServerService
 import com.neo.neomovies.torrserver.TorrServerManager
 import com.neo.neomovies.torrserver.api.model.TorrentFileStat
+import com.neo.neomovies.data.alloha.AllohaSessionHolder
 import com.neo.neomovies.data.alloha.AllohaSessionManager
 import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
@@ -253,12 +254,36 @@ fun WatchSelectorScreen(
                     translationName.ifBlank { effectiveTitle ?: "" }
                 }
 
+                // Gather episode translations for in-player switching
+                val currentEpisodeVoiceovers: List<Voiceover> = run {
+                    val s = state.selectedSeasonNumber
+                    val e = state.selectedEpisodeNumber
+                    if (s != null && e != null) {
+                        state.tvSeasons?.firstOrNull { it.number == s }
+                            ?.episodes?.firstOrNull { it.number == e }
+                            ?.voiceovers.orEmpty()
+                    } else {
+                        state.movie?.voiceovers.orEmpty()
+                    }
+                }
+
                 allohaSession.ensureInitialized()
+                // Expose session so the player can trigger translation switches
+                AllohaSessionHolder.session = allohaSession
+
                 allohaSession.onStreamReady = { _, m3u8Url ->
                     allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)
                     val proxyUrl = allohaSession.proxyMasterUrl
                     allohaParsingIframe = null
                     allohaParsingStatus = null
+
+                    // Populate holder so the player can switch translations in-flight
+                    AllohaSessionHolder.setTranslations(
+                        names = currentEpisodeVoiceovers.map { it.title },
+                        urls = currentEpisodeVoiceovers.map { it.playbackUrl },
+                        current = translationName,
+                    )
+
                     onWatch(
                         arrayListOf(proxyUrl),
                         arrayListOf(episodeName),

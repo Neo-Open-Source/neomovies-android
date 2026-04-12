@@ -55,7 +55,12 @@ fun TvVideoPlayerControls(
     var showAudioDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showAllohaTranslationDialog by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(player.isPlaying) }
+
+    val isAlloha = remember {
+        com.neo.neomovies.data.alloha.AllohaSessionHolder.translationNames.size > 1
+    }
 
     LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {
@@ -86,6 +91,36 @@ fun TvVideoPlayerControls(
             trackType = C.TRACK_TYPE_AUDIO,
             viewModel = viewModel,
             onDismiss = { showAudioDialog = false },
+        )
+    }
+
+    if (showAllohaTranslationDialog) {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val context = androidx.compose.ui.platform.LocalContext.current
+        AllohaTranslationDialog(
+            names = holder.translationNames,
+            currentName = holder.currentTranslation,
+            onSelect = { name, iframeUrl ->
+                showAllohaTranslationDialog = false
+                val session = holder.session ?: return@AllohaTranslationDialog
+                if (name == holder.currentTranslation) return@AllohaTranslationDialog
+
+                viewModel.updatePlaybackProgress()
+
+                session.onStreamReady = { _, m3u8Url ->
+                    session.hlsProxy?.updateMasterUrl(m3u8Url)
+                    holder.currentTranslation = name
+                    context.getSharedPreferences("alloha_translation", android.content.Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("last_translation_name", name)
+                        .apply()
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+                session.onError = { /* ignore */ }
+                session.startSession(iframeUrl)
+            },
+            onDismiss = { showAllohaTranslationDialog = false },
         )
     }
 
@@ -143,7 +178,11 @@ fun TvVideoPlayerControls(
                     icon = Icons.AutoMirrored.Filled.VolumeUp,
                     isPlaying = player.isPlaying,
                     onClick = {
-                        showAudioDialog = true
+                        if (isAlloha) {
+                            showAllohaTranslationDialog = true
+                        } else {
+                            showAudioDialog = true
+                        }
                         onShowControls()
                     },
                 )
@@ -252,5 +291,43 @@ private fun TrackSelectionRow(
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
         )
+    }
+}
+
+@Composable
+fun AllohaTranslationDialog(
+    names: List<String>,
+    currentName: String,
+    onSelect: (name: String, iframeUrl: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.large),
+            colors = ClickableSurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .widthIn(min = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.lumex_select_voiceover),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                names.forEachIndexed { index, name ->
+                    TrackSelectionRow(
+                        text = name,
+                        selected = name == currentName,
+                        onClick = {
+                            val url = holder.translationUrls.getOrNull(index) ?: return@TrackSelectionRow
+                            onSelect(name, url)
+                        },
+                    )
+                }
+            }
+        }
     }
 }

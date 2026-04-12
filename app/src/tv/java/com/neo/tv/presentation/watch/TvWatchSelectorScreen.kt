@@ -44,6 +44,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.neo.neomovies.R
+import com.neo.neomovies.data.alloha.AllohaSessionHolder
 import com.neo.neomovies.data.alloha.AllohaSessionManager
 import com.neo.neomovies.data.torrents.JacredTorrent
 import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
@@ -114,12 +115,34 @@ fun TvWatchSelectorScreen(
                     translationName.ifBlank { effectiveTitle ?: "" }
                 }
 
+                // Gather episode translations for in-player switching
+                val currentEpisodeVoiceovers = run {
+                    val s = state.selectedSeasonNumber
+                    val e = state.selectedEpisodeNumber
+                    if (s != null && e != null) {
+                        state.tvSeasons?.firstOrNull { it.number == s }
+                            ?.episodes?.firstOrNull { it.number == e }
+                            ?.voiceovers.orEmpty()
+                    } else {
+                        state.movie?.voiceovers.orEmpty()
+                    }
+                }
+
                 allohaSession.ensureInitialized()
+                AllohaSessionHolder.session = allohaSession
+
                 allohaSession.onStreamReady = { _, m3u8Url ->
                     allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)
                     val proxyUrl = allohaSession.proxyMasterUrl
                     allohaParsingIframe = null
                     allohaParsingStatus = null
+
+                    AllohaSessionHolder.setTranslations(
+                        names = currentEpisodeVoiceovers.map { it.title },
+                        urls = currentEpisodeVoiceovers.map { it.playbackUrl },
+                        current = translationName,
+                    )
+
                     onWatch(
                         arrayListOf(proxyUrl),
                         arrayListOf(episodeName),

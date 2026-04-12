@@ -187,7 +187,20 @@ class PlayerActivity : BasePlayerActivity() {
         qualityButton.isEnabled = false
         qualityButton.imageAlpha = 75
 
+        // For Alloha: enable audio button immediately for translation switching
+        if (isAllohaSource) {
+            val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+            if (holder.translationNames.size > 1) {
+                audioButton.isEnabled = true
+                audioButton.imageAlpha = 255
+            }
+        }
+
         audioButton.setOnClickListener {
+            if (isAllohaSource) {
+                showAllohaTranslationPicker()
+                return@setOnClickListener
+            }
             TrackSelectionDialogFragment
                 .newInstance(C.TRACK_TYPE_AUDIO)
                 .show(supportFragmentManager, "trackselectiondialog")
@@ -502,6 +515,75 @@ class PlayerActivity : BasePlayerActivity() {
         if (isInPictureInPictureMode) {
             binding.playerView.hideController()
         }
+    }
+
+    private fun showAllohaTranslationPicker() {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val names = holder.translationNames
+        val urls = holder.translationUrls
+        if (names.isEmpty()) return
+
+        val currentIdx = names.indexOf(holder.currentTranslation).coerceAtLeast(0)
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(com.neo.neomovies.R.string.lumex_select_voiceover))
+            .setSingleChoiceItems(names.toTypedArray(), currentIdx) { dialog, which ->
+                dialog.dismiss()
+                val newName = names[which]
+                val newIframeUrl = urls.getOrNull(which) ?: return@setSingleChoiceItems
+                if (newName == holder.currentTranslation) return@setSingleChoiceItems
+
+                switchAllohaTranslation(newName, newIframeUrl)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun switchAllohaTranslation(translationName: String, iframeUrl: String) {
+        val session = com.neo.neomovies.data.alloha.AllohaSessionHolder.session ?: return
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+
+        // Save current position so we know the user was at this point
+        viewModel.updatePlaybackProgress()
+
+        // Show a brief loading indicator
+        val videoNameTextView = binding.playerView.findViewById<android.widget.TextView>(R.id.video_name)
+        val originalTitle = videoNameTextView.text
+        videoNameTextView.text = getString(com.neo.neomovies.R.string.alloha_parsing_stream)
+
+        session.onStreamReady = { _, m3u8Url ->
+            session.hlsProxy?.updateMasterUrl(m3u8Url)
+            holder.currentTranslation = translationName
+
+            // Save the translation preference
+            getSharedPreferences("alloha_translation", MODE_PRIVATE)
+                .edit()
+                .putString("last_translation_name", translationName)
+                .apply()
+
+            // Update title bar with new translation name
+            val currentTitle = originalTitle?.toString() ?: ""
+            val newTitle = if (currentTitle.contains(" - ")) {
+                currentTitle.substringBefore(" - ") + " - $translationName"
+            } else {
+                "$currentTitle - $translationName"
+            }
+            runOnUiThread {
+                videoNameTextView.text = newTitle
+                // Re-prepare ExoPlayer -- proxy URL stays the same, upstream changed
+                viewModel.player.prepare()
+                viewModel.player.playWhenReady = true
+            }
+        }
+
+        session.onError = { error ->
+            runOnUiThread {
+                videoNameTextView.text = originalTitle
+                android.widget.Toast.makeText(this, "Error: $error", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        session.startSession(iframeUrl)
     }
 
     companion object {
