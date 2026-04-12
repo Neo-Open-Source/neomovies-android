@@ -24,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,11 +38,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.neo.neomovies.R
+import com.neo.neomovies.data.alloha.AllohaSessionManager
 import com.neo.neomovies.data.torrents.JacredTorrent
 import com.neo.neomovies.ui.home.collectAsStateWithLifecycleCompat
 import com.neo.neomovies.ui.settings.SourceManager
@@ -65,8 +68,22 @@ fun TvWatchSelectorScreen(
     val context = LocalContext.current
     val sourceMode = remember { SourceManager.getMode(context) }
 
+    val effectiveTitle = state.details?.title?.takeIf { it.isNotBlank() }
+        ?: state.details?.name?.takeIf { it.isNotBlank() }
+
     val episodeProgressCallback: (Int, Int, Int, Long, Long) -> Unit = { kpId, season, episode, positionMs, durationMs ->
         viewModel.updateEpisodeWatchProgress(kpId, season, episode, positionMs, durationMs)
+    }
+
+    // Alloha session manager (only for ALLOHA source)
+    val allohaSession = remember {
+        if (sourceMode == SourceMode.ALLOHA) AllohaSessionManager(context) else null
+    }
+    var allohaParsingIframe by remember { mutableStateOf<String?>(null) }
+    var allohaParsingStatus by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(allohaSession) {
+        onDispose { allohaSession?.release() }
     }
 
     LaunchedEffect(
@@ -78,30 +95,72 @@ fun TvWatchSelectorScreen(
         val playlist = state.selectedPlaylistUrls
         val names = state.selectedPlaylistNames
         val startIndex = state.selectedPlaylistStartIndex
-        if (playlist != null && names != null && startIndex != null) {
-            val safePlaylist = ArrayList(playlist.filterNotNull())
-            val safeNames = ArrayList(names.map { it ?: "" })
-            if (safePlaylist.isNotEmpty()) {
+        val isAllohaVoiceover = state.selectedVoiceoverId?.startsWith("alloha:") == true
+
+        when {
+            isAllohaVoiceover && state.selectedPlaybackUrl != null && allohaSession != null -> {
+                val iframeUrl = state.selectedPlaybackUrl!!
+                allohaParsingIframe = iframeUrl
+                allohaParsingStatus = context.getString(R.string.alloha_parsing_stream)
+                viewModel.clearSelectedPlaybackUrl()
+
+                val seasonNum = state.selectedSeasonNumber
+                val episodeNum = state.selectedEpisodeNumber
+                val translationName = state.allohaTranslationName ?: ""
+                val episodeName = if (seasonNum != null && episodeNum != null) {
+                    val se = "S%02dE%02d".format(seasonNum, episodeNum)
+                    if (translationName.isNotBlank()) "$se - $translationName" else se
+                } else {
+                    translationName.ifBlank { effectiveTitle ?: "" }
+                }
+
+                allohaSession.ensureInitialized()
+                allohaSession.onStreamReady = { _, m3u8Url ->
+                    allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)
+                    val proxyUrl = allohaSession.proxyMasterUrl
+                    allohaParsingIframe = null
+                    allohaParsingStatus = null
+                    onWatch(
+                        arrayListOf(proxyUrl),
+                        arrayListOf(episodeName),
+                        0,
+                        effectiveTitle,
+                        state.kinopoiskId,
+                        episodeProgressCallback,
+                    )
+                }
+                allohaSession.onError = { error ->
+                    allohaParsingIframe = null
+                    allohaParsingStatus = "Error: $error"
+                }
+                allohaSession.startSession(iframeUrl)
+            }
+            playlist != null && names != null && startIndex != null -> {
+                val safePlaylist = ArrayList(playlist.filterNotNull())
+                val safeNames = ArrayList(names.map { it ?: "" })
+                if (safePlaylist.isNotEmpty()) {
+                    onWatch(
+                        safePlaylist,
+                        safeNames,
+                        startIndex.coerceIn(0, safePlaylist.size - 1),
+                        state.details?.title,
+                        state.kinopoiskId,
+                        episodeProgressCallback,
+                    )
+                }
+                viewModel.clearSelectedPlaybackUrl()
+            }
+            state.selectedPlaybackUrl != null && !isAllohaVoiceover -> {
                 onWatch(
-                    safePlaylist,
-                    safeNames,
-                    startIndex.coerceIn(0, safePlaylist.size - 1),
+                    arrayListOf(state.selectedPlaybackUrl ?: ""),
+                    arrayListOf(""),
+                    0,
                     state.details?.title,
                     state.kinopoiskId,
                     episodeProgressCallback,
                 )
+                viewModel.clearSelectedPlaybackUrl()
             }
-            viewModel.clearSelectedPlaybackUrl()
-        } else if (state.selectedPlaybackUrl != null) {
-            onWatch(
-                arrayListOf(state.selectedPlaybackUrl ?: ""),
-                arrayListOf(""),
-                0,
-                state.details?.title,
-                state.kinopoiskId,
-                episodeProgressCallback,
-            )
-            viewModel.clearSelectedPlaybackUrl()
         }
     }
 
@@ -201,8 +260,8 @@ fun TvWatchSelectorScreen(
                         )
                     }
                     SourceMode.ALLOHA -> {
-                        // Alloha on TV reuses the Collaps-style season/episode UI
                         val seasons = state.tvSeasons.orEmpty()
+                        val movie = state.movie
                         val posterId = state.details?.externalIds?.kp?.toString()
                             ?: state.details?.id
                             ?: state.details?.sourceId
@@ -210,57 +269,123 @@ fun TvWatchSelectorScreen(
                             ?: resolveDetailsImageUrl(state.details?.posterUrl)
                             ?: resolveDetailsImageUrl(posterId)
 
-                        if (seasons.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(text = stringResource(R.string.lumex_no_data))
-                            }
-                        } else {
-                            val selectedSeason = state.selectedSeasonNumber
-                            if (selectedSeason == null) {
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(minSize = 180.dp),
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                                ) {
-                                    items(seasons) { season ->
-                                        SeasonCard(
-                                            seasonNumber = season.number,
-                                            posterUrl = poster,
-                                            onClick = { viewModel.selectSeason(season.number) },
-                                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            when {
+                                seasons.isNotEmpty() -> {
+                                    val selectedSeason = state.selectedSeasonNumber
+
+                                    // Translation picker overlay
+                                    if (state.showAllohaTranslationPicker && state.allohaEpisodeVoiceovers.isNotEmpty()) {
+                                        LazyColumn(
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                        ) {
+                                            item {
+                                                Text(
+                                                    text = stringResource(R.string.lumex_select_voiceover),
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = Color.White,
+                                                )
+                                            }
+                                            items(state.allohaEpisodeVoiceovers) { voice ->
+                                                val isSaved = voice.title == state.allohaTranslationName
+                                                EpisodeItem(
+                                                    episodeNumber = 0,
+                                                    isWatched = false,
+                                                    supportingText = voice.title,
+                                                    onClick = { viewModel.selectAllohaVoiceover(voice) },
+                                                )
+                                            }
+                                        }
+                                    } else if (selectedSeason == null) {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Adaptive(minSize = 180.dp),
+                                            modifier = Modifier.fillMaxSize(),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                        ) {
+                                            items(seasons) { season ->
+                                                SeasonCard(
+                                                    seasonNumber = season.number,
+                                                    posterUrl = poster,
+                                                    onClick = { viewModel.selectSeason(season.number) },
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        val season = seasons.firstOrNull { it.number == selectedSeason }
+                                        val episodes = season?.episodes.orEmpty()
+
+                                        LazyColumn(
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                        ) {
+                                            items(episodes) { episode ->
+                                                val progressPercent = if (episode.watchProgressMs > 0) {
+                                                    val duration = 45 * 60 * 1000L
+                                                    ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
+                                                } else 0
+
+                                                val supportingText = when {
+                                                    episode.isWatched -> stringResource(R.string.episode_watched)
+                                                    progressPercent > 0 -> stringResource(R.string.episode_progress, progressPercent)
+                                                    episode.voiceovers.size > 1 -> episode.voiceovers.joinToString(", ") { it.title }
+                                                    else -> null
+                                                }
+
+                                                EpisodeItem(
+                                                    episodeNumber = episode.number,
+                                                    isWatched = episode.isWatched,
+                                                    supportingText = supportingText,
+                                                    onClick = { viewModel.selectEpisode(episode.number) },
+                                                )
+                                            }
+                                        }
                                     }
                                 }
-                            } else {
-                                val season = seasons.firstOrNull { it.number == selectedSeason }
-                                val episodes = season?.episodes.orEmpty()
-
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                                ) {
-                                    items(episodes) { episode ->
-                                        val progressPercent = if (episode.watchProgressMs > 0) {
-                                            val duration = 45 * 60 * 1000L
-                                            ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
-                                        } else 0
-
-                                        val supportingText = when {
-                                            episode.isWatched -> stringResource(R.string.episode_watched)
-                                            progressPercent > 0 -> stringResource(R.string.episode_progress, progressPercent)
-                                            else -> null
+                                movie != null -> {
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                    ) {
+                                        items(movie.voiceovers) { voice ->
+                                            EpisodeItem(
+                                                episodeNumber = 0,
+                                                isWatched = false,
+                                                supportingText = voice.title,
+                                                onClick = { viewModel.selectAllohaVoiceover(voice) },
+                                            )
                                         }
+                                    }
+                                }
+                                else -> {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(text = stringResource(R.string.lumex_no_data))
+                                    }
+                                }
+                            }
 
-                                        EpisodeItem(
-                                            episodeNumber = episode.number,
-                                            isWatched = episode.isWatched,
-                                            supportingText = supportingText,
-                                            onClick = { viewModel.selectEpisode(episode.number) }
+                            // Alloha parsing overlay
+                            if (allohaParsingIframe != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.7f)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator()
+                                        Text(
+                                            text = allohaParsingStatus ?: stringResource(R.string.alloha_parsing_stream),
+                                            color = Color.White,
+                                            modifier = Modifier.padding(top = 16.dp),
                                         )
                                     }
                                 }

@@ -242,6 +242,17 @@ fun WatchSelectorScreen(
                 allohaParsingStatus = context.getString(R.string.alloha_parsing_stream)
                 viewModel.clearSelectedPlaybackUrl()
 
+                // Build a descriptive episode name for the player title bar
+                val seasonNum = state.selectedSeasonNumber
+                val episodeNum = state.selectedEpisodeNumber
+                val translationName = state.allohaTranslationName ?: ""
+                val episodeName = if (seasonNum != null && episodeNum != null) {
+                    val se = "S%02dE%02d".format(seasonNum, episodeNum)
+                    if (translationName.isNotBlank()) "$se - $translationName" else se
+                } else {
+                    translationName.ifBlank { effectiveTitle ?: "" }
+                }
+
                 allohaSession.ensureInitialized()
                 allohaSession.onStreamReady = { _, m3u8Url ->
                     allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)
@@ -250,7 +261,7 @@ fun WatchSelectorScreen(
                     allohaParsingStatus = null
                     onWatch(
                         arrayListOf(proxyUrl),
-                        arrayListOf(effectiveTitle ?: ""),
+                        arrayListOf(episodeName),
                         0,
                         effectiveTitle,
                         state.kinopoiskId,
@@ -1237,6 +1248,40 @@ fun WatchSelectorScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // Alloha translation picker
+    if (state.showAllohaTranslationPicker && state.allohaEpisodeVoiceovers.isNotEmpty()) {
+        val allohaSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissAllohaTranslationPicker() },
+            sheetState = allohaSheetState,
+        ) {
+            Text(
+                text = stringResource(R.string.lumex_select_voiceover),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 32.dp),
+            ) {
+                items(state.allohaEpisodeVoiceovers) { voice ->
+                    val isSaved = voice.title == state.allohaTranslationName
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = voice.title,
+                                fontWeight = if (isSaved) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.selectAllohaVoiceover(voice) },
+                    )
                 }
             }
         }

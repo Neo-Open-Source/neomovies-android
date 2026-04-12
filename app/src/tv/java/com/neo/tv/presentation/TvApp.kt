@@ -96,7 +96,9 @@ fun TvApp(
                 onBack = { navController.popBackStack() },
                 onWatch = { urls, names, startIndex, title, kinopoiskId, episodeProgressCallback ->
                     val mode = PlayerEngineManager.getMode(context)
-                    val useCollapsHeaders = SourceManager.getMode(context) == SourceMode.COLLAPS
+                    val currentSourceMode = SourceManager.getMode(context)
+                    val useCollapsHeaders = currentSourceMode == SourceMode.COLLAPS
+                    val isAlloha = currentSourceMode == SourceMode.ALLOHA
                     TvPlayerArgs.set(
                         urls = urls,
                         names = names,
@@ -104,13 +106,17 @@ fun TvApp(
                         title = title,
                         useExo = mode == PlayerEngineMode.EXO,
                         useCollapsHeaders = useCollapsHeaders,
+                        isAlloha = isAlloha,
                         sourceId = sourceId,
                         kinopoiskId = kinopoiskId,
                         episodeProgressCallback = episodeProgressCallback,
                     )
 
                     navController.navigate(TvScreens.Player.route) {
-                        popUpTo(TvScreens.WatchSelector.route) { inclusive = true }
+                        // Keep WatchSelector on back stack for Alloha so user can pick next episode
+                        if (!isAlloha) {
+                            popUpTo(TvScreens.WatchSelector.route) { inclusive = true }
+                        }
                     }
                 },
             )

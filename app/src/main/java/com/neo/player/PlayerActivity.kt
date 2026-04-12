@@ -172,7 +172,9 @@ class PlayerActivity : BasePlayerActivity() {
         val aspectRatioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_aspect_ratio)
 
         val useCollapsHeaders = intent.getBooleanExtra(EXTRA_USE_COLLAPS_HEADERS, false)
-        qualityButton.isVisible = useCollapsHeaders
+        val isAllohaSource = intent.getBooleanExtra(EXTRA_IS_ALLOHA, false)
+        // Quality selection: available for both Collaps (DASH/HLS) and Alloha (HLS proxy)
+        qualityButton.isVisible = useCollapsHeaders || isAllohaSource
 
         audioButton.isEnabled = false
         audioButton.imageAlpha = 75
@@ -512,6 +514,7 @@ class PlayerActivity : BasePlayerActivity() {
         const val EXTRA_USE_COLLAPS_HEADERS = "use_collaps_headers"
         const val EXTRA_START_FROM_BEGINNING = "start_from_beginning"
         const val EXTRA_KINOPOISK_ID = "kinopoisk_id"
+        const val EXTRA_IS_ALLOHA = "is_alloha"
 
         fun intent(context: android.content.Context, url: String, title: String? = null, startFromBeginning: Boolean = false): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
@@ -540,6 +543,7 @@ class PlayerActivity : BasePlayerActivity() {
             startFromBeginning: Boolean = false,
             useExo: Boolean = false,
             useCollapsHeaders: Boolean = false,
+            isAlloha: Boolean = false,
             kinopoiskId: Int? = null,
             episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
         ): Intent {
@@ -552,6 +556,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, useExo)
                 putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
+                putExtra(EXTRA_IS_ALLOHA, isAlloha)
                 putExtra(EXTRA_KINOPOISK_ID, kinopoiskId)
             }
         }
@@ -564,6 +569,7 @@ class PlayerActivity : BasePlayerActivity() {
             title: String? = null,
             startFromBeginning: Boolean = false,
             useCollapsHeaders: Boolean = false,
+            isAlloha: Boolean = false,
             kinopoiskId: Int? = null,
             episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
         ): Intent {
@@ -576,6 +582,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, true)
                 putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
+                putExtra(EXTRA_IS_ALLOHA, isAlloha)
                 putExtra(EXTRA_KINOPOISK_ID, kinopoiskId)
             }
         }

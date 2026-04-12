@@ -47,6 +47,13 @@ data class WatchSelectorUiState(
     val selectedQuality: Int? = null,
     val resolvedMaxQuality: Int? = null,
 
+    /** Saved Alloha translation name for cross-episode persistence. */
+    val allohaTranslationName: String? = null,
+    /** True when the UI should show the Alloha translation picker. */
+    val showAllohaTranslationPicker: Boolean = false,
+    /** Available translations for the currently selected Alloha episode. */
+    val allohaEpisodeVoiceovers: List<Voiceover> = emptyList(),
+
     val torrents: List<JacredTorrent> = emptyList(),
     
     val resolvingTorrent: Boolean = false,
@@ -93,6 +100,10 @@ class WatchSelectorViewModel(
     
     private val watchedPrefs: SharedPreferences by lazy {
         context.getSharedPreferences("collaps_watched", Context.MODE_PRIVATE)
+    }
+
+    private val allohaTranslationPrefs: SharedPreferences by lazy {
+        context.getSharedPreferences("alloha_translation", Context.MODE_PRIVATE)
     }
 
     init {
@@ -380,14 +391,67 @@ class WatchSelectorViewModel(
                 selectedPlaybackUrl = null,
                 selectedQuality = null,
                 resolvedMaxQuality = null,
+                showAllohaTranslationPicker = false,
+                allohaEpisodeVoiceovers = emptyList(),
             )
         }
 
         val seasonNumber = _state.value.selectedSeasonNumber ?: return
         val season = _state.value.tvSeasons?.firstOrNull { it.number == seasonNumber } ?: return
         val episode = season.episodes.firstOrNull { it.number == episodeNumber } ?: return
+
+        // For Alloha: try to match saved translation; show picker if multiple and no match
+        if (SourceManager.getMode(context) == SourceMode.ALLOHA) {
+            val savedName = _state.value.allohaTranslationName
+                ?: allohaTranslationPrefs.getString("last_translation_name", null)
+            val matched = if (savedName != null) {
+                episode.voiceovers.firstOrNull { it.title == savedName }
+            } else null
+
+            if (matched != null) {
+                selectAllohaVoiceover(matched)
+                return
+            }
+            if (episode.voiceovers.size == 1) {
+                selectAllohaVoiceover(episode.voiceovers.first())
+                return
+            }
+            // Multiple translations, no saved preference -- show picker
+            _state.update {
+                it.copy(
+                    showAllohaTranslationPicker = true,
+                    allohaEpisodeVoiceovers = episode.voiceovers,
+                )
+            }
+            return
+        }
+
         val voiceover = episode.voiceovers.firstOrNull() ?: return
         selectVoiceover(voiceover.id, voiceover.playbackUrl)
+    }
+
+    /** Select an Alloha translation and persist the choice. */
+    fun selectAllohaVoiceover(voiceover: Voiceover) {
+        allohaTranslationPrefs.edit()
+            .putString("last_translation_name", voiceover.title)
+            .apply()
+        _state.update {
+            it.copy(
+                allohaTranslationName = voiceover.title,
+                showAllohaTranslationPicker = false,
+                allohaEpisodeVoiceovers = emptyList(),
+            )
+        }
+        selectVoiceover(voiceover.id, voiceover.playbackUrl)
+    }
+
+    fun dismissAllohaTranslationPicker() {
+        _state.update {
+            it.copy(
+                showAllohaTranslationPicker = false,
+                allohaEpisodeVoiceovers = emptyList(),
+            )
+        }
     }
 
     fun selectVoiceover(voiceoverId: String, playbackUrl: String) {
