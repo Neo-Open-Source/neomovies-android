@@ -146,10 +146,11 @@ class PlayerViewModel(
             val trackSelector = DefaultTrackSelector(getApplication()).apply {
                 val builder = buildUponParameters()
                     .setAllowInvalidateSelectionsOnRendererCapabilitiesChange(true)
-                // Alloha HLS: prefer H264 (widely supported) and Russian audio
+                // Alloha HLS: force H264 codec, cap at 1080p, prefer Russian audio
                 if (isAlloha) {
                     builder
                         .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
+                        .setMaxVideoSize(1920, 1080)
                         .setPreferredAudioLanguage("ru")
                         .setPreferredTextLanguage("ru")
                 }

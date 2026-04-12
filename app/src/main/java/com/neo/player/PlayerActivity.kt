@@ -265,7 +265,7 @@ class PlayerActivity : BasePlayerActivity() {
                             subtitleButton.imageAlpha = 255
                             speedButton.isEnabled = true
                             speedButton.imageAlpha = 255
-                            if (useCollapsHeaders) {
+                            if (useCollapsHeaders || isAllohaSource) {
                                 qualityButton.isEnabled = true
                                 qualityButton.imageAlpha = 255
                             }
