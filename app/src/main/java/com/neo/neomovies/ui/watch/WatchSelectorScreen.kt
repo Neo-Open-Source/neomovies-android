@@ -281,12 +281,14 @@ fun WatchSelectorScreen(
                     allohaParsingIframe = null
                     allohaParsingStatus = null
 
-                    // Populate holder so the player can switch translations in-flight
+                    // Populate holder so the player can switch translations and quality
                     AllohaSessionHolder.setTranslations(
                         names = currentEpisodeVoiceovers.map { it.title },
                         urls = currentEpisodeVoiceovers.map { it.playbackUrl },
                         current = translationName,
                     )
+                    AllohaSessionHolder.qualityMap = allohaSession.lastQualityMap
+                    AllohaSessionHolder.currentQuality = allohaSession.lastSelectedQuality
 
                     onWatch(
                         arrayListOf(proxyUrl),

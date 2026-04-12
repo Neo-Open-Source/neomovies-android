@@ -213,6 +213,10 @@ class PlayerActivity : BasePlayerActivity() {
         }
 
         qualityButton.setOnClickListener {
+            if (isAllohaSource) {
+                showAllohaQualityPicker()
+                return@setOnClickListener
+            }
             TrackSelectionDialogFragment
                 .newInstance(C.TRACK_TYPE_VIDEO)
                 .show(supportFragmentManager, "trackselectiondialog")
@@ -515,6 +519,39 @@ class PlayerActivity : BasePlayerActivity() {
         if (isInPictureInPictureMode) {
             binding.playerView.hideController()
         }
+    }
+
+    private fun showAllohaQualityPicker() {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val session = holder.session ?: return
+        val qualityMap = session.lastQualityMap
+        if (qualityMap.isEmpty()) return
+
+        // Order: highest to lowest
+        val orderedKeys = listOf("2160", "1440", "1080", "720", "480", "360")
+            .filter { qualityMap.containsKey(it) }
+        if (orderedKeys.isEmpty()) return
+
+        val labels = orderedKeys.map { "${it}p" }.toTypedArray()
+        val currentIdx = orderedKeys.indexOf(holder.currentQuality).coerceAtLeast(0)
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(com.neo.neomovies.R.string.lumex_select_quality))
+            .setSingleChoiceItems(labels, currentIdx) { dialog, which ->
+                dialog.dismiss()
+                val newKey = orderedKeys[which]
+                if (newKey == holder.currentQuality) return@setSingleChoiceItems
+
+                holder.currentQuality = newKey
+                session.switchQuality(newKey)
+
+                // Re-prepare ExoPlayer with new quality URL via proxy
+                viewModel.resetAudioOverride()
+                viewModel.player.prepare()
+                viewModel.player.playWhenReady = true
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun showAllohaTranslationPicker() {

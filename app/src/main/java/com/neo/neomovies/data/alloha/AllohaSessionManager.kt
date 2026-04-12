@@ -55,6 +55,25 @@ class AllohaSessionManager(private val context: Context) {
     /** Callback invoked when the proxy CDN url is refreshed. */
     var onM3u8Updated: ((String) -> Unit)? = null
 
+    /** Quality map from last bnsi parse (e.g. "1080" -> URL). */
+    var lastQualityMap: Map<String, String> = emptyMap()
+        private set
+
+    /** Currently selected quality key. */
+    @Volatile
+    var lastSelectedQuality: String = ""
+
+    /**
+     * Switch to a different quality by updating the proxy's master URL.
+     * Caller should re-prepare ExoPlayer after this returns.
+     */
+    fun switchQuality(qualityKey: String) {
+        val url = lastQualityMap[qualityKey] ?: return
+        currentM3u8Url = url
+        lastSelectedQuality = qualityKey
+        hlsProxy?.updateMasterUrl(url)
+    }
+
     fun ensureInitialized() {
         if (parser == null) {
             parser = AllohaParser(context)
@@ -110,11 +129,15 @@ class AllohaSessionManager(private val context: Context) {
                     activeHeaders.clear()
                     activeHeaders.putAll(extraHeaders)
 
+                    // Store all qualities for the player's quality picker
+                    lastQualityMap = qualitiesMap.toMap()
+
                     // Pick best quality as default m3u8
-                    val bestKey = listOf("2160", "1440", "1080", "720", "480", "360")
+                    val bestKey = listOf("1080", "720", "1440", "2160", "480", "360")
                         .firstOrNull { qualitiesMap.containsKey(it) }
                     val bestUrl = bestKey?.let { qualitiesMap[it] } ?: qualitiesMap.values.first()
                     currentM3u8Url = bestUrl
+                    lastSelectedQuality = bestKey ?: ""
 
                     onStreamReady?.invoke(json, bestUrl)
                 } catch (e: Exception) {

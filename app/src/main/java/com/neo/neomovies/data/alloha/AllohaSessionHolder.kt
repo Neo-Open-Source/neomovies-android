@@ -22,6 +22,13 @@ object AllohaSessionHolder {
     @Volatile
     var currentTranslation: String = ""
 
+    /** Available quality levels from bnsi (e.g. "2160" -> URL, "1080" -> URL). */
+    var qualityMap: Map<String, String> = emptyMap()
+
+    /** Currently selected quality key (e.g. "1080"). */
+    @Volatile
+    var currentQuality: String = ""
+
     fun setTranslations(names: List<String>, urls: List<String>, current: String) {
         translationNames = names
         translationUrls = urls
@@ -33,5 +40,7 @@ object AllohaSessionHolder {
         translationNames = emptyList()
         translationUrls = emptyList()
         currentTranslation = ""
+        qualityMap = emptyMap()
+        currentQuality = ""
     }
 }
