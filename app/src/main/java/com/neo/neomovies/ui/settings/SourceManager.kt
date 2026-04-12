@@ -5,6 +5,7 @@ import android.content.Context
 enum class SourceMode {
     COLLAPS,
     TORRENTS,
+    ALLOHA,
 }
 
 object SourceManager {

@@ -200,6 +200,73 @@ fun TvWatchSelectorScreen(
                             },
                         )
                     }
+                    SourceMode.ALLOHA -> {
+                        // Alloha on TV reuses the Collaps-style season/episode UI
+                        val seasons = state.tvSeasons.orEmpty()
+                        val posterId = state.details?.externalIds?.kp?.toString()
+                            ?: state.details?.id
+                            ?: state.details?.sourceId
+                        val poster = resolveDetailsImageUrl(state.details?.backdropUrl)
+                            ?: resolveDetailsImageUrl(state.details?.posterUrl)
+                            ?: resolveDetailsImageUrl(posterId)
+
+                        if (seasons.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(text = stringResource(R.string.lumex_no_data))
+                            }
+                        } else {
+                            val selectedSeason = state.selectedSeasonNumber
+                            if (selectedSeason == null) {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(minSize = 180.dp),
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                ) {
+                                    items(seasons) { season ->
+                                        SeasonCard(
+                                            seasonNumber = season.number,
+                                            posterUrl = poster,
+                                            onClick = { viewModel.selectSeason(season.number) },
+                                        )
+                                    }
+                                }
+                            } else {
+                                val season = seasons.firstOrNull { it.number == selectedSeason }
+                                val episodes = season?.episodes.orEmpty()
+
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                ) {
+                                    items(episodes) { episode ->
+                                        val progressPercent = if (episode.watchProgressMs > 0) {
+                                            val duration = 45 * 60 * 1000L
+                                            ((episode.watchProgressMs.toFloat() / duration) * 100).toInt()
+                                        } else 0
+
+                                        val supportingText = when {
+                                            episode.isWatched -> stringResource(R.string.episode_watched)
+                                            progressPercent > 0 -> stringResource(R.string.episode_progress, progressPercent)
+                                            else -> null
+                                        }
+
+                                        EpisodeItem(
+                                            episodeNumber = episode.number,
+                                            isWatched = episode.isWatched,
+                                            supportingText = supportingText,
+                                            onClick = { viewModel.selectEpisode(episode.number) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.neo.neomovies.di
 import com.neo.neomovies.data.FavoritesRepository
 import com.neo.neomovies.data.MoviesRepository
 import com.neo.neomovies.data.SupportRepository
+import com.neo.neomovies.data.alloha.AllohaRepository
 import com.neo.neomovies.data.collaps.CollapsRepository
 import com.neo.neomovies.data.torrents.JacredTorrentsRepository
 import com.neo.neomovies.data.network.MoviesApi
@@ -31,6 +32,7 @@ val appModule = module {
     single { FavoritesRepository(api = get()) }
     single { JacredTorrentsRepository(okHttpClient = get()) }
     single { CollapsRepository(okHttpClient = get(), context = GlobalContext.get().get()) }
+    single { AllohaRepository(okHttpClient = get()) }
     single {
         SupportRepository(
             api = get(),
@@ -49,7 +51,7 @@ val appModule = module {
     }
 
     viewModel { (sourceId: String) ->
-        WatchSelectorViewModel(moviesRepository = get(), torrentsRepository = get(), collapsRepository = get(), context = GlobalContext.get().get(), sourceId = sourceId)
+        WatchSelectorViewModel(moviesRepository = get(), torrentsRepository = get(), collapsRepository = get(), allohaRepository = get(), context = GlobalContext.get().get(), sourceId = sourceId)
     }
 
     viewModel { SearchViewModel(repository = get(), context = GlobalContext.get().get()) }

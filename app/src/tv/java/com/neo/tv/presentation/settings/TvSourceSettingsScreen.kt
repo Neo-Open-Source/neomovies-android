@@ -53,6 +53,11 @@ fun TvSourceSettingsScreen(
                 selected = mode == SourceMode.TORRENTS,
                 onSelect = { select(SourceMode.TORRENTS) },
             )
+            SourceRow(
+                title = stringResource(R.string.settings_source_alloha),
+                selected = mode == SourceMode.ALLOHA,
+                onSelect = { select(SourceMode.ALLOHA) },
+            )
         }
     }
 }

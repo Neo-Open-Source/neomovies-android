@@ -25,6 +25,10 @@
     <string name="settings_source">Source</string>
     <string name="settings_source_collaps">Collaps</string>
     <string name="settings_source_torrents">Torrents</string>
+    <string name="settings_source_alloha">Alloha (Experimental)</string>
+
+    <string name="alloha_parsing_stream">Capturing stream session…</string>
+    <string name="alloha_error_no_kp">Kinopoisk ID required for Alloha</string>
 
     <string name="torrserver_status_label">Status: %1$s</string>
     <string name="torrserver_status_running">Server is running</string>

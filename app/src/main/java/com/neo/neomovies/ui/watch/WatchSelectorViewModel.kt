@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import android.content.Context
 import android.content.SharedPreferences
 import com.neo.neomovies.data.MoviesRepository
+import com.neo.neomovies.data.alloha.AllohaRepository
 import com.neo.neomovies.data.collaps.CollapsRepository
 import com.neo.neomovies.data.network.dto.MediaDetailsDto
 import com.neo.neomovies.data.torrents.JacredTorrent
@@ -83,6 +84,7 @@ class WatchSelectorViewModel(
     private val moviesRepository: MoviesRepository,
     private val torrentsRepository: JacredTorrentsRepository,
     val collapsRepository: CollapsRepository,
+    val allohaRepository: AllohaRepository,
     private val context: Context,
     private val sourceId: String,
 ) : ViewModel() {
@@ -216,6 +218,71 @@ class WatchSelectorViewModel(
         }
     }
 
+    private fun loadAlloha(kpId: Int) {
+        viewModelScope.launch {
+            runCatching {
+                allohaRepository.fetchByKpId(kpId)
+            }.onSuccess { result ->
+                if (result.isSerial && result.seasons.isNotEmpty()) {
+                    val mapped = result.seasons.map { s ->
+                        Season(
+                            number = s.season,
+                            title = "${s.season}",
+                            episodes = s.episodes.map { e ->
+                                val voiceovers = e.translations.mapIndexed { idx, t ->
+                                    Voiceover(
+                                        id = "alloha:${s.season}:${e.episode}:${t.id}",
+                                        title = t.name,
+                                        playbackUrl = t.iframeUrl,
+                                    )
+                                }
+                                val watchedKey = "kp_${kpId}_s${s.season}_e${e.episode}"
+                                val watchProgressMs = watchedPrefs.getLong(watchedKey, 0L)
+                                val isWatched = watchedPrefs.getBoolean("${watchedKey}_watched", false)
+                                Episode(
+                                    number = e.episode,
+                                    title = "${e.episode}",
+                                    voiceovers = voiceovers,
+                                    isWatched = isWatched,
+                                    watchProgressMs = watchProgressMs,
+                                )
+                            },
+                        )
+                    }
+                    _state.update {
+                        it.copy(
+                            tvSeasons = mapped,
+                            isSourcesLoading = false,
+                        )
+                    }
+                } else if (!result.isSerial && result.movie != null) {
+                    val movieVoiceovers = result.movie.translations.mapIndexed { idx, t ->
+                        Voiceover(
+                            id = "alloha:movie:${t.id}",
+                            title = t.name,
+                            playbackUrl = t.iframeUrl,
+                        )
+                    }
+                    _state.update {
+                        it.copy(
+                            isSourcesLoading = false,
+                            movie = Movie(
+                                title = result.title,
+                                voiceovers = movieVoiceovers,
+                                hlsUrl = null,
+                            ),
+                        )
+                    }
+                } else {
+                    _state.update { it.copy(isSourcesLoading = false) }
+                }
+            }.onFailure { t ->
+                Log.e("WatchSelectorVM", "loadAlloha failed: ${t.message}", t)
+                _state.update { it.copy(isSourcesLoading = false, error = t.message ?: "") }
+            }
+        }
+    }
+
     fun load() {
         _state.update { WatchSelectorUiState(isLoading = true) }
         viewModelScope.launch {
@@ -256,6 +323,13 @@ class WatchSelectorViewModel(
                             loadTorrentsByQuery("kp$kpId", fallbackTitle = titleForSearch, year = year)
                         } else if (titleForSearch != null) {
                             loadTorrentsByQuery(titleForSearch, fallbackTitle = null, year = year)
+                        } else {
+                            _state.update { it.copy(isSourcesLoading = false) }
+                        }
+                    }
+                    SourceMode.ALLOHA -> {
+                        if (kpId != null) {
+                            loadAlloha(kpId)
                         } else {
                             _state.update { it.copy(isSourcesLoading = false) }
                         }
@@ -320,6 +394,23 @@ class WatchSelectorViewModel(
         val kpId = _state.value.kinopoiskId
         val s = _state.value.selectedSeasonNumber
         val e = _state.value.selectedEpisodeNumber
+
+        // Alloha voiceovers: playbackUrl is an iframe URL.
+        // Set it directly; the WatchSelectorScreen handles parsing via AllohaSessionManager.
+        if (voiceoverId.startsWith("alloha:")) {
+            _state.update {
+                it.copy(
+                    selectedVoiceoverId = voiceoverId,
+                    selectedPlaybackUrl = playbackUrl,
+                    selectedPlaylistUrls = null,
+                    selectedPlaylistNames = null,
+                    selectedPlaylistStartIndex = null,
+                    selectedQuality = null,
+                    resolvedMaxQuality = null,
+                )
+            }
+            return
+        }
 
         // If this is a Collaps DASH voice, rewrite mpd and play via content:// so external players can also open it.
         if (kpId != null && s != null && e != null && voiceoverId.startsWith("collaps:")) {
@@ -561,13 +652,20 @@ class WatchSelectorViewModel(
             .apply()
         
         // Refresh state to update UI
-        loadCollaps(kpId)
+        when (SourceManager.getMode(context)) {
+            SourceMode.COLLAPS -> loadCollaps(kpId)
+            SourceMode.ALLOHA -> loadAlloha(kpId)
+            else -> {}
+        }
     }
 
     fun refreshCollapsProgress() {
         val kpId = _state.value.kinopoiskId ?: return
-        if (SourceManager.getMode(context) != SourceMode.COLLAPS) return
-        loadCollaps(kpId)
+        when (SourceManager.getMode(context)) {
+            SourceMode.COLLAPS -> loadCollaps(kpId)
+            SourceMode.ALLOHA -> loadAlloha(kpId)
+            else -> return
+        }
     }
 
     fun clearSelectedPlaybackUrl() {

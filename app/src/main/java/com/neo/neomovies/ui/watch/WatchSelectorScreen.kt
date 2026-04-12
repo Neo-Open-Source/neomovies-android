@@ -72,6 +72,7 @@ import com.neo.neomovies.R
 import com.neo.neomovies.torrserver.TorServerService
 import com.neo.neomovies.torrserver.TorrServerManager
 import com.neo.neomovies.torrserver.api.model.TorrentFileStat
+import com.neo.neomovies.data.alloha.AllohaSessionManager
 import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
 import com.neo.neomovies.ui.util.normalizeImageUrl
@@ -207,9 +208,23 @@ fun WatchSelectorScreen(
         )
     }
 
-    // Create episode progress callback for Collaps
+    // Create episode progress callback for Collaps/Alloha
     val episodeProgressCallback: (Int, Int, Int, Long, Long) -> Unit = { kpId, season, episode, positionMs, durationMs ->
         viewModel.updateEpisodeWatchProgress(kpId, season, episode, positionMs, durationMs)
+    }
+
+    // Alloha session manager (only instantiated when ALLOHA source is active)
+    val allohaSession = remember {
+        if (sourceMode == SourceMode.ALLOHA) AllohaSessionManager(context) else null
+    }
+    var allohaParsingIframe by remember { mutableStateOf<String?>(null) }
+    var allohaParsingStatus by remember { mutableStateOf<String?>(null) }
+
+    // Clean up Alloha session when leaving the screen
+    DisposableEffect(allohaSession) {
+        onDispose {
+            allohaSession?.release()
+        }
     }
 
     LaunchedEffect(state.selectedPlaybackUrl, state.selectedPlaylistUrls, state.selectedPlaylistNames, state.selectedPlaylistStartIndex) {
@@ -217,13 +232,43 @@ fun WatchSelectorScreen(
         val playlistNames = state.selectedPlaylistNames
         val startIndex = state.selectedPlaylistStartIndex
 
+        // For Alloha voiceovers, selectedPlaybackUrl is an iframe URL that needs parsing
+        val isAllohaVoiceover = state.selectedVoiceoverId?.startsWith("alloha:") == true
+
         when {
+            isAllohaVoiceover && state.selectedPlaybackUrl != null && allohaSession != null -> {
+                val iframeUrl = state.selectedPlaybackUrl!!
+                allohaParsingIframe = iframeUrl
+                allohaParsingStatus = context.getString(R.string.alloha_parsing_stream)
+                viewModel.clearSelectedPlaybackUrl()
+
+                allohaSession.ensureInitialized()
+                allohaSession.onStreamReady = { _, m3u8Url ->
+                    allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)
+                    val proxyUrl = allohaSession.proxyMasterUrl
+                    allohaParsingIframe = null
+                    allohaParsingStatus = null
+                    onWatch(
+                        arrayListOf(proxyUrl),
+                        arrayListOf(effectiveTitle ?: ""),
+                        0,
+                        effectiveTitle,
+                        state.kinopoiskId,
+                        episodeProgressCallback,
+                    )
+                }
+                allohaSession.onError = { error ->
+                    allohaParsingIframe = null
+                    allohaParsingStatus = "Error: $error"
+                }
+                allohaSession.startSession(iframeUrl)
+            }
             playlist != null && playlistNames != null && startIndex != null -> {
                 // Pass the episode progress callback to the player
                 onWatch(ArrayList(playlist), ArrayList(playlistNames), startIndex, effectiveTitle, state.kinopoiskId, episodeProgressCallback)
                 viewModel.clearSelectedPlaybackUrl()
             }
-            state.selectedPlaybackUrl != null -> {
+            state.selectedPlaybackUrl != null && !isAllohaVoiceover -> {
                 onWatch(arrayListOf(state.selectedPlaybackUrl), arrayListOf(""), 0, effectiveTitle, state.kinopoiskId, episodeProgressCallback)
                 viewModel.clearSelectedPlaybackUrl()
             }
@@ -670,6 +715,166 @@ fun WatchSelectorScreen(
                                 else -> {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                         Text(text = stringResource(R.string.lumex_no_data))
+                                    }
+                                }
+                            }
+                        }
+                        SourceMode.ALLOHA -> {
+                            val poster = resolveDetailsImageUrl(state.details?.backdropUrl)
+                                ?: resolveDetailsImageUrl(state.details?.posterUrl)
+
+                            val seasons = state.tvSeasons.orEmpty()
+                            val movie = state.movie
+                            val selectedSeason = state.selectedSeasonNumber
+
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                when {
+                                    seasons.isNotEmpty() -> {
+                                        if (selectedSeason == null) {
+                                            LazyVerticalGrid(
+                                                columns = GridCells.Adaptive(minSize = 140.dp),
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            ) {
+                                                items(seasons) { s ->
+                                                    SeasonCard(
+                                                        title = "Season ${s.number}",
+                                                        posterUrl = poster,
+                                                        onClick = { viewModel.selectSeason(s.number) },
+                                                        onDownload = null,
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            val season = seasons.firstOrNull { it.number == selectedSeason }
+                                            val episodes = season?.episodes.orEmpty()
+                                            LazyColumn(
+                                                modifier = Modifier.fillMaxSize(),
+                                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                                            ) {
+                                                items(episodes) { ep ->
+                                                    val progressPercent = if (ep.watchProgressMs > 0) {
+                                                        val duration = 45 * 60 * 1000L
+                                                        ((ep.watchProgressMs.toFloat() / duration) * 100).toInt()
+                                                    } else {
+                                                        null
+                                                    }
+
+                                                    val supportingContent: (@Composable () -> Unit)? =
+                                                        if (ep.isWatched || progressPercent != null) {
+                                                            {
+                                                                Column {
+                                                                    if (ep.isWatched) {
+                                                                        Text(text = stringResource(R.string.episode_watched), color = MaterialTheme.colorScheme.primary)
+                                                                    } else if (progressPercent != null) {
+                                                                        Text(text = stringResource(R.string.episode_progress, progressPercent), color = MaterialTheme.colorScheme.secondary)
+                                                                    }
+                                                                    // Show available translations
+                                                                    if (ep.voiceovers.size > 1) {
+                                                                        Text(
+                                                                            text = ep.voiceovers.joinToString(", ") { it.title },
+                                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                            fontSize = 12.sp,
+                                                                            maxLines = 2,
+                                                                            overflow = TextOverflow.Ellipsis,
+                                                                        )
+                                                                    }
+                                                                }
+                                                            }
+                                                        } else if (ep.voiceovers.size > 1) {
+                                                            {
+                                                                Text(
+                                                                    text = ep.voiceovers.joinToString(", ") { it.title },
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                    fontSize = 12.sp,
+                                                                    maxLines = 2,
+                                                                    overflow = TextOverflow.Ellipsis,
+                                                                )
+                                                            }
+                                                        } else {
+                                                            null
+                                                        }
+
+                                                    val leadingContent: (@Composable () -> Unit)? = when {
+                                                        ep.isWatched -> {
+                                                            {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.CheckCircle,
+                                                                    contentDescription = "Watched",
+                                                                    tint = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.size(24.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                        progressPercent != null -> {
+                                                            {
+                                                                CircularProgressIndicator(
+                                                                    progress = { ep.watchProgressMs.toFloat() / (45 * 60 * 1000L) },
+                                                                    modifier = Modifier.size(24.dp),
+                                                                    strokeWidth = 2.dp,
+                                                                    color = MaterialTheme.colorScheme.secondary
+                                                                )
+                                                            }
+                                                        }
+                                                        else -> null
+                                                    }
+                                                    ListItem(
+                                                        headlineContent = { Text(text = "Episode ${ep.number}") },
+                                                        supportingContent = supportingContent,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(14.dp))
+                                                            .clickable { viewModel.selectEpisode(ep.number) }
+                                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                                        leadingContent = leadingContent,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    movie != null -> {
+                                        Column(
+                                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        ) {
+                                            movie.voiceovers.forEach { voice ->
+                                                Button(
+                                                    onClick = { viewModel.selectVoiceover(voice.id, voice.playbackUrl) },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(12.dp),
+                                                ) {
+                                                    Text(text = voice.title)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else -> {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text(text = stringResource(R.string.lumex_no_data))
+                                        }
+                                    }
+                                }
+
+                                // Alloha parsing overlay
+                                if (allohaParsingIframe != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Black.copy(alpha = 0.6f))
+                                            .clickable(enabled = false) {},
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            CircularProgressIndicator()
+                                            Text(
+                                                text = allohaParsingStatus ?: stringResource(R.string.alloha_parsing_stream),
+                                                color = Color.White,
+                                                modifier = Modifier.padding(top = 16.dp),
+                                            )
+                                        }
                                     }
                                 }
                             }
