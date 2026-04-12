@@ -7,7 +7,8 @@ set -e
 KEYSTORE_FILE="prerelease.keystore"
 ALIAS="neomovies-prerelease"
 STORE_PASS="neomovies-prerelease-store"
-KEY_PASS="neomovies-prerelease-key"
+# For PKCS12 keystores, keypass must equal storepass (PKCS12 doesn't support separate key passwords)
+KEY_PASS="$STORE_PASS"
 
 keytool -genkeypair \
   -keystore "$KEYSTORE_FILE" \
@@ -15,6 +16,7 @@ keytool -genkeypair \
   -keyalg RSA \
   -keysize 2048 \
   -validity 36500 \
+  -storetype PKCS12 \
   -storepass "$STORE_PASS" \
   -keypass "$KEY_PASS" \
   -dname "CN=NeoMovies Prerelease, O=NeoMovies, C=RU"

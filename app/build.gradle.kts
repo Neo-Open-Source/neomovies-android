@@ -17,7 +17,8 @@ android {
             val ksPath = System.getenv("RELEASE_KEYSTORE_PATH")
             val ksPass = System.getenv("RELEASE_KEYSTORE_PASSWORD")
             val keyAlias = System.getenv("RELEASE_KEY_ALIAS")
-            val keyPass = System.getenv("RELEASE_KEY_PASSWORD")
+            // For PKCS12 keystores, keyPassword often equals storePassword
+            val keyPass = System.getenv("RELEASE_KEY_PASSWORD") ?: ksPass
             if (ksPath != null && ksPass != null && keyAlias != null && keyPass != null) {
                 storeFile = file(ksPath)
                 storePassword = ksPass

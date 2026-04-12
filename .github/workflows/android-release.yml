@@ -102,22 +102,6 @@ jobs:
             exit 0
           fi
           echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > "$RUNNER_TEMP/release.keystore"
-
-          # Validate keystore file is valid (checks storePassword)
-          echo "=== Keystore file size ==="
-          wc -c < "$RUNNER_TEMP/release.keystore"
-          echo "=== Listing keystore aliases (storepass check) ==="
-          keytool -list \
-            -keystore "$RUNNER_TEMP/release.keystore" \
-            -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
-            -noprompt
-          echo "=== Checking key alias with keypass ==="
-          keytool -list -v \
-            -keystore "$RUNNER_TEMP/release.keystore" \
-            -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
-            -alias "${{ secrets.RELEASE_KEY_ALIAS }}" \
-            -noprompt
-
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> $GITHUB_ENV
           echo "RELEASE_KEYSTORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
