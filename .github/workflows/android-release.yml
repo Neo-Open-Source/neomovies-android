@@ -101,7 +101,13 @@ jobs:
             echo "RELEASE_KEYSTORE_BASE64 secret not set, skipping keystore setup"
             exit 0
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > "$RUNNER_TEMP/release.keystore"
+          # Validate keystore is readable
+          keytool -list \
+            -keystore "$RUNNER_TEMP/release.keystore" \
+            -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.RELEASE_KEY_ALIAS }}" \
+            -noprompt
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> $GITHUB_ENV
           echo "RELEASE_KEYSTORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
