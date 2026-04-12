@@ -34,6 +34,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fix gradlew permissions
         run: chmod +x ./gradlew
@@ -269,6 +270,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
           git add site/src/content/posts/
-          git commit -m "Add release post for ${{ steps.meta.outputs.tag_name }}" || echo "No changes to commit"
-          git push origin main || echo "Push failed, may need manual intervention"
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add release post for ${{ steps.meta.outputs.tag_name }}"
+            git push origin HEAD:main
+          fi
