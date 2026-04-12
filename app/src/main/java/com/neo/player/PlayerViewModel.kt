@@ -64,8 +64,13 @@ class PlayerViewModel(
         savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS)
             ?: (SourceManager.getMode(getApplication()) == SourceMode.COLLAPS)
     }
+
+    private val isAlloha: Boolean by lazy {
+        savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_IS_ALLOHA)
+            ?: (SourceManager.getMode(getApplication()) == SourceMode.ALLOHA)
+    }
     
-    private val forceFirstAudioTrack: Boolean by lazy { useCollapsHeaders }
+    private val forceFirstAudioTrack: Boolean by lazy { useCollapsHeaders || isAlloha }
     private var appliedFirstAudioOverride: Boolean = false
 
     private val _uiState = MutableStateFlow(UiState(currentItemTitle = "", fileLoaded = false))
@@ -147,23 +152,39 @@ class PlayerViewModel(
                 .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS)
                 .setTsExtractorTimestampSearchBytes(1500 * TsExtractor.TS_PACKET_SIZE)
 
-            val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            if (useCollapsHeaders) {
-                httpDataSourceFactory.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                httpDataSourceFactory.setDefaultRequestProperties(
-                    mapOf(
-                        "Referer" to "https://kinokrad.my/",
-                        "Origin" to "https://kinokrad.my",
-                    )
-                )
-            }
+            val mediaSourceFactory: androidx.media3.exoplayer.source.MediaSource.Factory
 
-            val upstreamFactory = DefaultDataSource.Factory(getApplication(), httpDataSourceFactory)
-            val dataSourceFactory = CacheDataSource.Factory()
-                .setCache(DownloadUtil.getDownloadCache(getApplication()))
-                .setUpstreamDataSourceFactory(upstreamFactory)
-                .setCacheWriteDataSinkFactory(null)
-            val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
+            if (isAlloha) {
+                // Alloha: use OkHttpDataSource to talk to the local HLS proxy.
+                // No cache wrapping -- the proxy handles CDN auth and caching.
+                val activeHeaders = com.neo.neomovies.data.alloha.AllohaSessionHolder.session?.activeHeaders.orEmpty()
+                val okClient = okhttp3.OkHttpClient.Builder()
+                    .followRedirects(true)
+                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                val okDataSourceFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okClient)
+                    .setUserAgent(activeHeaders["user-agent"] ?: "Mozilla/5.0")
+                mediaSourceFactory = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(okDataSourceFactory)
+            } else {
+                val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                if (useCollapsHeaders) {
+                    httpDataSourceFactory.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    httpDataSourceFactory.setDefaultRequestProperties(
+                        mapOf(
+                            "Referer" to "https://kinokrad.my/",
+                            "Origin" to "https://kinokrad.my",
+                        )
+                    )
+                }
+
+                val upstreamFactory = DefaultDataSource.Factory(getApplication(), httpDataSourceFactory)
+                val dataSourceFactory = CacheDataSource.Factory()
+                    .setCache(DownloadUtil.getDownloadCache(getApplication()))
+                    .setUpstreamDataSourceFactory(upstreamFactory)
+                    .setCacheWriteDataSinkFactory(null)
+                mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
+            }
 
             val extensionMode = if (isEmulator()) {
                 DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
