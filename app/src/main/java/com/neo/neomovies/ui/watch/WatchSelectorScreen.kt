@@ -287,6 +287,9 @@ fun WatchSelectorScreen(
                 AllohaSessionHolder.episodeNames = allEpisodes.map { ep ->
                     "S%02dE%02d".format(seasonNum2 ?: 1, ep.number)
                 }
+                AllohaSessionHolder.episodeVoiceoverUrls = allEpisodes.map { ep ->
+                    ep.voiceovers.associate { it.title to it.playbackUrl }
+                }
                 AllohaSessionHolder.currentEpisodeIndex = currentEpIdx
 
                 allohaSession.onStreamReady = { _, m3u8Url ->
@@ -893,19 +896,16 @@ fun WatchSelectorScreen(
                                         }
                                     }
                                     movie != null -> {
-                                        Column(
-                                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                                        ) {
-                                            movie.voiceovers.forEach { voice ->
-                                                Button(
-                                                    onClick = { viewModel.selectVoiceover(voice.id, voice.playbackUrl) },
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    shape = RoundedCornerShape(12.dp),
-                                                ) {
-                                                    Text(text = voice.title)
-                                                }
-                                            }
+                                        // Auto-select saved/first voiceover for Alloha movies
+                                        LaunchedEffect(movie) {
+                                            val savedName = context.getSharedPreferences("alloha_translation", android.content.Context.MODE_PRIVATE)
+                                                .getString("last_translation_name", null)
+                                            val voice = movie.voiceovers.firstOrNull { it.title == savedName }
+                                                ?: movie.voiceovers.firstOrNull()
+                                            if (voice != null) viewModel.selectVoiceover(voice.id, voice.playbackUrl)
+                                        }
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator()
                                         }
                                     }
                                     else -> {

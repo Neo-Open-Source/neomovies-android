@@ -46,6 +46,8 @@ object AllohaSessionHolder {
     /** Episode list for in-player switching: iframe URLs (parallel to [episodeNames]). */
     var episodeIframeUrls: List<String> = emptyList()
     var episodeNames: List<String> = emptyList()
+    /** Per-episode voiceover map: episodeIndex → (translationName → iframeUrl) */
+    var episodeVoiceoverUrls: List<Map<String, String>> = emptyList()
     @Volatile
     var currentEpisodeIndex: Int = 0
 
@@ -60,6 +62,7 @@ object AllohaSessionHolder {
         skipRanges = emptyList()
         episodeIframeUrls = emptyList()
         episodeNames = emptyList()
+        episodeVoiceoverUrls = emptyList()
         currentEpisodeIndex = 0
     }
 }

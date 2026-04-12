@@ -670,7 +670,6 @@ class PlayerActivity : BasePlayerActivity() {
     private fun showAllohaTranslationPicker() {
         val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
         val names = holder.translationNames
-        val urls = holder.translationUrls
         if (names.isEmpty()) return
 
         val currentIdx = names.indexOf(holder.currentTranslation).coerceAtLeast(0)
@@ -680,8 +679,13 @@ class PlayerActivity : BasePlayerActivity() {
             .setSingleChoiceItems(names.toTypedArray(), currentIdx) { dialog, which ->
                 dialog.dismiss()
                 val newName = names[which]
-                val newIframeUrl = urls.getOrNull(which) ?: return@setSingleChoiceItems
                 if (newName == holder.currentTranslation) return@setSingleChoiceItems
+
+                // Use per-episode voiceover URL for current episode index
+                val epIdx = holder.currentEpisodeIndex
+                val newIframeUrl = holder.episodeVoiceoverUrls.getOrNull(epIdx)?.get(newName)
+                    ?: holder.translationUrls.getOrNull(which)
+                    ?: return@setSingleChoiceItems
 
                 switchAllohaTranslation(newName, newIframeUrl)
             }
