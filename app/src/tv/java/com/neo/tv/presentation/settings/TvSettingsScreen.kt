@@ -35,6 +35,7 @@ fun TvSettingsScreen(
         when (SourceManager.getMode(context)) {
             SourceMode.COLLAPS -> stringResource(R.string.settings_source_collaps)
             SourceMode.TORRENTS -> stringResource(R.string.settings_source_torrents)
+            SourceMode.ALLOHA -> stringResource(R.string.settings_source_alloha)
         }
 
     val engineLabel =

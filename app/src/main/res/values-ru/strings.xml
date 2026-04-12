@@ -25,6 +25,10 @@
     <string name="settings_source">Источник</string>
     <string name="settings_source_collaps">Collaps</string>
     <string name="settings_source_torrents">Торренты</string>
+    <string name="settings_source_alloha">Alloha (Экспериментально)</string>
+
+    <string name="alloha_parsing_stream">Захват потока…</string>
+    <string name="alloha_error_no_kp">Для Alloha нужен Kinopoisk ID</string>
 
     <string name="torrserver_status_label">Статус: %1$s</string>
     <string name="torrserver_status_running">Сервер запущен</string>
