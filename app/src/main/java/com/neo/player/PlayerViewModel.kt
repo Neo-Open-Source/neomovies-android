@@ -255,7 +255,13 @@ class PlayerViewModel(
             _uiState.update { it.copy(currentItemTitle = buildDisplayTitle(initialItem)) }
         }
 
-        val startPosition = if (startFromBeginning || isAlloha) 0L else prefs.getLong("pos_$currentUrl", 0L)
+        val progressKey = if (isAlloha && kinopoiskId != null) {
+            val epIdx = com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex
+            "pos_alloha_${kinopoiskId}_ep$epIdx"
+        } else {
+            "pos_$currentUrl"
+        }
+        val startPosition = if (startFromBeginning) 0L else prefs.getLong(progressKey, 0L)
 
         // Alloha: URLs go through a local HLS proxy -- use OkHttpDataSource + HlsMediaSource
         // directly, bypassing the built-in MediaSourceFactory (which uses DefaultHttpDataSource
@@ -379,10 +385,31 @@ class PlayerViewModel(
         return null
     }
 
+    // For Alloha the proxy URL is always the same — use kpId+episodeIndex as unique key
+    private fun progressKey(): String {
+        val mediaId = player.currentMediaItem?.mediaId ?: return ""
+        return if (isAlloha && kpId != null) {
+            val epIdx = com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex
+            "pos_alloha_${kpId}_ep$epIdx"
+        } else {
+            "pos_$mediaId"
+        }
+    }
+
+    fun clearCurrentProgress() {
+        val key = progressKey().takeIf { it.isNotBlank() } ?: return
+        prefs.edit().remove(key).apply()
+    }
+
+    fun clearEpisodeProgress(episodeIndex: Int) {
+        if (kpId == null) return
+        prefs.edit().remove("pos_alloha_${kpId}_ep$episodeIndex").apply()
+    }
+
     fun updatePlaybackProgress() {
-        val mediaId = player.currentMediaItem?.mediaId ?: return
+        val key = progressKey().takeIf { it.isNotBlank() } ?: return
         val position = player.currentPosition
-        prefs.edit().putLong("pos_$mediaId", position).apply()
+        prefs.edit().putLong(key, position).apply()
         savedStateHandle["position"] = position
         
         // Update Collaps episode progress if available

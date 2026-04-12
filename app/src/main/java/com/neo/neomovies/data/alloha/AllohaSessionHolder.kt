@@ -25,9 +25,13 @@ object AllohaSessionHolder {
     /** Available quality levels from bnsi (e.g. "2160" -> URL, "1080" -> URL). */
     var qualityMap: Map<String, String> = emptyMap()
 
-    /** Currently selected quality key (e.g. "1080"). */
+    /** Currently selected quality key (e.g. "1080"). Empty = auto. */
     @Volatile
     var currentQuality: String = ""
+
+    /** True when quality was set by auto-selection (not manually by user). */
+    @Volatile
+    var isAutoQuality: Boolean = true
 
     fun setTranslations(names: List<String>, urls: List<String>, current: String) {
         translationNames = names
@@ -52,6 +56,7 @@ object AllohaSessionHolder {
         currentTranslation = ""
         qualityMap = emptyMap()
         currentQuality = ""
+        isAutoQuality = true
         skipRanges = emptyList()
         episodeIframeUrls = emptyList()
         episodeNames = emptyList()

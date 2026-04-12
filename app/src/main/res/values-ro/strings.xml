@@ -152,6 +152,7 @@
     <string name="lumex_select_episode">Episod</string>
     <string name="lumex_select_voiceover">Dublaj</string>
     <string name="lumex_select_quality">Calitate</string>
+    <string name="quality_auto">Auto</string>
     <string name="lumex_no_data">Nu există surse disponibile</string>
 
     <string name="common_error">Eroare</string>
@@ -224,4 +225,20 @@
     <string name="downloaded_label">Descărcat</string>
     <string name="download_in_progress">Descărcare %1$d%%</string>
     <string name="download_complete">Descărcat</string>
+
+    <string-array name="changes_history">
+        <item>0.1.0-pre6||- Adăugat sursa Alloha: proxy HLS, selecție dublaj, subtitrări, skip intro/outro, calitate auto.\n- Comutare episoade în player (butoanele |&lt; și &gt;|).\n- Remediat player TV: navigare D-pad, buton Back, dublaje și subtitrări.\n- Optimizare UI: încărcare fluidă a posterelor, liste mai rapide.\n- Adăugate limbi: ucraineană, belarusă, română.\n- Actualizare automată prin GitHub Releases.</item>
+        <item>0.1.0-pre5||- Actualizate modelele API pentru căutare și favorite.\n- Adăugată descărcarea episoadelor pentru vizionare offline.\n- Diverse remedieri și îmbunătățiri de stabilitate.</item>
+        <item>0.1.0-pre4||- Adăugate funcții noi în player-ul TV și remedieri ale player-ului principal.\n- Adăugată comutarea episoadelor în sursa Collaps.</item>
+        <item>0.1.0-pre3||- Remedieri de erori și rescris player-ul TV.</item>
+        <item>0.1.0-pre2||- Adăugat player Collaps și versiunea pentru televizoare.</item>
+        <item>0.1.0-pre1||- Prima pre-lansare\n- Adăugați playere: ExoPlayer și libMPV\n- Adăugat Torrserver și mici îmbunătățiri.</item>
+    </string-array>
+    <string name="settings_update_channel">Canal de actualizări</string>
+    <string name="settings_update_channel_stable">Versiuni stabile</string>
+    <string name="settings_update_channel_prerelease">Pre-lansări</string>
+    <string name="about_check_update">Verifică actualizări</string>
+    <string name="about_check_update_desc">Apăsați pentru a verifica o versiune nouă</string>
+    <string name="about_check_update_checking">Se verifică…</string>
+    <string name="about_check_update_latest">Aveți cea mai recentă versiune</string>
 </resources>

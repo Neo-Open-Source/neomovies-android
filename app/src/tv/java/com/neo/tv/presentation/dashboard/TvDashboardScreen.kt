@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -20,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -29,7 +29,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -113,7 +112,7 @@ fun TvDashboardScreen(
 
         TvTopBar(
             modifier = Modifier
-                .offset { IntOffset(x = 0, y = topBarYOffsetPx) }
+                .graphicsLayer { translationY = topBarYOffsetPx.toFloat() }
                 .onSizeChanged { topBarHeightPx = it.height }
                 .onFocusChanged { isTopBarFocused = it.hasFocus }
                 .padding(
@@ -145,7 +144,7 @@ fun TvDashboardScreen(
             openAbout = openAbout,
             updateTopBarVisibility = { isTopBarVisible = it },
             navController = navController,
-            modifier = Modifier.offset(y = navHostTopPaddingDp),
+            modifier = Modifier.graphicsLayer { translationY = if (isTopBarVisible) with(density) { topBarHeightPx.toDp().toPx() } else 0f },
         )
     }
 }

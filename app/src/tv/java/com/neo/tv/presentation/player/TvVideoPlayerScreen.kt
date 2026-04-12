@@ -109,7 +109,14 @@ fun TvVideoPlayerScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    BackHandler { onBack() }
+    // Always intercept Back: hide controls first, then exit
+    BackHandler {
+        if (playerState.isControlsVisible) {
+            playerState.hideControls()
+        } else {
+            onBack()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -120,11 +127,6 @@ fun TvVideoPlayerScreen(
 
                 val keyCode = event.nativeKeyEvent.keyCode
                 when (keyCode) {
-                    KeyEvent.KEYCODE_BACK -> {
-                        onBack()
-                        return@onKeyEvent true
-                    }
-
                     KeyEvent.KEYCODE_MEDIA_REWIND -> {
                         viewModel.player.seekBack()
                         playerState.showControls(viewModel.player.isPlaying)
@@ -135,29 +137,41 @@ fun TvVideoPlayerScreen(
                         playerState.showControls(viewModel.player.isPlaying)
                         return@onKeyEvent true
                     }
-                    KeyEvent.KEYCODE_MEDIA_PLAY,
-                    KeyEvent.KEYCODE_MEDIA_PAUSE,
+                    KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                        viewModel.player.play()
+                        playerState.showControls(true)
+                        return@onKeyEvent true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                        viewModel.player.pause()
+                        playerState.showControls(false)
+                        return@onKeyEvent true
+                    }
                     KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                        when (keyCode) {
-                            KeyEvent.KEYCODE_MEDIA_PLAY -> viewModel.player.play()
-                            KeyEvent.KEYCODE_MEDIA_PAUSE -> viewModel.player.pause()
-                            else -> if (viewModel.player.isPlaying) viewModel.player.pause() else viewModel.player.play()
-                        }
+                        if (viewModel.player.isPlaying) viewModel.player.pause() else viewModel.player.play()
                         playerState.showControls(viewModel.player.isPlaying)
                         return@onKeyEvent true
                     }
                     KeyEvent.KEYCODE_DPAD_CENTER,
-                    KeyEvent.KEYCODE_ENTER,
+                    KeyEvent.KEYCODE_ENTER -> {
+                        if (playerState.isControlsVisible) {
+                            // OK on controls = toggle play/pause
+                            if (viewModel.player.isPlaying) viewModel.player.pause() else viewModel.player.play()
+                            playerState.showControls(viewModel.player.isPlaying)
+                        } else {
+                            playerState.showControls(viewModel.player.isPlaying)
+                        }
+                        return@onKeyEvent true
+                    }
                     KeyEvent.KEYCODE_DPAD_UP,
                     KeyEvent.KEYCODE_DPAD_DOWN,
                     KeyEvent.KEYCODE_DPAD_LEFT,
                     KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                        if (playerState.isControlsVisible) {
-                            playerState.showControls(viewModel.player.isPlaying)
-                        } else {
+                        if (!playerState.isControlsVisible) {
                             playerState.showControls(viewModel.player.isPlaying)
                             return@onKeyEvent true
                         }
+                        // Controls visible — let focus system handle D-pad
                     }
                 }
                 false
@@ -221,14 +235,19 @@ fun TvVideoPlayerScreen(
         )
         onDispose {
             viewModel.updatePlaybackProgress()
+            // Release Alloha session when player exits
+            if (effectiveIsAlloha) {
+                com.neo.neomovies.data.alloha.AllohaSessionHolder.session?.release()
+                com.neo.neomovies.data.alloha.AllohaSessionHolder.clear()
+            }
             TvPlayerArgs.clear()
         }
     }
 
     LaunchedEffect(viewModel) {
         while (true) {
+            delay(15_000L)
             viewModel.updatePlaybackProgress()
-            delay(5000L)
         }
     }
 }

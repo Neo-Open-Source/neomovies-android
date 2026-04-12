@@ -66,6 +66,11 @@ class SearchViewModel(
         saveHistory(updated)
     }
 
+    fun clearHistory() {
+        _state.update { it.copy(history = emptyList()) }
+        saveHistory(emptyList())
+    }
+
     fun loadNextPage() {
         val s = state.value
         if (s.isLoading || s.isAppendLoading || s.page >= s.totalPages) return

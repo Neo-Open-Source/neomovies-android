@@ -211,7 +211,12 @@ fun SearchScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
-                                items(state.items) { item ->
+                                items(state.items, key = { item ->
+                                    when (val v = item.id) {
+                                        is Number -> v.toLong()
+                                        else -> v?.toString() ?: item.hashCode()
+                                    }
+                                }) { item ->
                                     val rawId = when (val v = item.id) {
                                         is Number -> v.toLong().toString()
                                         else -> v?.toString()

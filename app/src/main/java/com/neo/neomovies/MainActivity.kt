@@ -131,6 +131,33 @@ fun NeoMoviesApp(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val authManager = androidx.compose.runtime.remember { NeoIdAuthManager(context) }
+    val uriHandlerApp = androidx.compose.ui.platform.LocalUriHandler.current
+
+    // Auto-check for updates on launch
+    val startupUpdateState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<com.neo.neomovies.update.ReleaseInfo?>(null) }
+    var startupUpdate = startupUpdateState.value
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        startupUpdateState.value = com.neo.neomovies.update.UpdateChecker.checkForUpdate(context)
+    }
+    if (startupUpdateState.value != null) {
+        val info = startupUpdateState.value!!
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { startupUpdateState.value = null },
+            title = { androidx.compose.material3.Text("Доступно обновление ${info.tagName}") },
+            text = { androidx.compose.material3.Text(info.htmlUrl) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    uriHandlerApp.openUri(info.apkUrl ?: info.htmlUrl)
+                    startupUpdateState.value = null
+                }) { androidx.compose.material3.Text("Скачать") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { startupUpdateState.value = null }) {
+                    androidx.compose.material3.Text("Позже")
+                }
+            },
+        )
+    }
 
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()

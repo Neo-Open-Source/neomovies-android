@@ -104,6 +104,7 @@
     <string name="changes_version_label">Version: %1$s</string>
 
     <string-array name="changes_history">
+        <item>0.1.0-pre6||- Added Alloha source: HLS proxy, voiceover selection, subtitles, intro/outro skip, auto quality.\n- Episode switching in player (|&lt; and &gt;| buttons).\n- Fixed TV player: D-pad navigation, Back button, audio tracks and subtitles.\n- UI optimizations: smooth poster loading, faster lists.\n- Added languages: Ukrainian, Belarusian, Romanian.\n- Auto-update via GitHub Releases.</item>
         <item>0.1.0-pre5||- Updated API models for search and favorites.\n- Added offline episode downloads with correct playback duration.\n- Fixed search history (persisted across sessions).\n- Fixed delete button for downloaded episodes.\n- Various bug fixes and stability improvements.</item>
         <item>0.1.0-pre4||- New features have been added to the TV player, as well as fixes for the main player.\n- Added series switching to source Collaps.</item>
         <item>0.1.0-pre3||- Bug fixes and rewrite TV Player.</item>
@@ -170,6 +171,14 @@
     <string name="lumex_select_episode">Episode</string>
     <string name="lumex_select_voiceover">Voiceover</string>
     <string name="lumex_select_quality">Quality</string>
+    <string name="quality_auto">Auto</string>
+    <string name="settings_update_channel">Update channel</string>
+    <string name="settings_update_channel_stable">Stable releases</string>
+    <string name="settings_update_channel_prerelease">Pre-releases</string>
+    <string name="about_check_update">Check for updates</string>
+    <string name="about_check_update_desc">Tap to check for a new version</string>
+    <string name="about_check_update_checking">Checking…</string>
+    <string name="about_check_update_latest">You have the latest version</string>
     <string name="lumex_no_data">No sources available</string>
 
     <string name="common_error">Error</string>
@@ -180,6 +189,8 @@
     <string name="search_start_typing">Start typing a query</string>
     <string name="search_nothing_found">Nothing found</string>
     <string name="search_history_remove">Remove from history</string>
+    <string name="search_history">History</string>
+    <string name="search_history_clear">Clear all</string>
 
     <string name="pagination_prev">Previous</string>
     <string name="pagination_next">Next</string>

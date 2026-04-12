@@ -104,6 +104,7 @@
     <string name="changes_version_label">Версия: %1$s</string>
 
     <string-array name="changes_history">
+        <item>0.1.0-pre6||- Добавлен источник Alloha: HLS-прокси, выбор озвучки, субтитры, пропуск интро/аутро, авто-качество.\n- Переключение серий в плеере (кнопки |&lt; и &gt;|).\n- Исправлен TV-плеер: навигация D-pad, кнопка Back, озвучки и субтитры.\n- Оптимизация UI: плавная загрузка постеров, ускорение списков.\n- Добавлены языки: украинский, белорусский, румынский.\n- Авто-обновление через GitHub Releases.</item>
         <item>0.1.0-pre5||- Обновлены модели API для поиска и избранного.\n- Добавлена загрузка серий для оффлайн-просмотра с корректным отображением длительности.\n- История поиска теперь сохраняется между сессиями.\n- Исправлена кнопка удаления скачанных серий.\n- Различные исправления и улучшения стабильности.</item>
         <item>0.1.0-pre4||- Добавлены новые фичи в тв плеер а также фиксы основного плеера.\n- Добавлено переключение серий в источнике Collaps.</item>
         <item>0.1.0-pre3||- Баг фиксы и переписан плеер для телевизоров.</item>
@@ -170,6 +171,14 @@
     <string name="lumex_select_episode">Серия</string>
     <string name="lumex_select_voiceover">Озвучка</string>
     <string name="lumex_select_quality">Качество</string>
+    <string name="quality_auto">Авто</string>
+    <string name="settings_update_channel">Канал обновлений</string>
+    <string name="settings_update_channel_stable">Стабильные релизы</string>
+    <string name="settings_update_channel_prerelease">Пре-релизы</string>
+    <string name="about_check_update">Проверить обновления</string>
+    <string name="about_check_update_desc">Нажмите для проверки новой версии</string>
+    <string name="about_check_update_checking">Проверяем…</string>
+    <string name="about_check_update_latest">У вас последняя версия</string>
     <string name="lumex_no_data">Нет доступных источников</string>
 
     <string name="common_error">Ошибка</string>
@@ -180,6 +189,8 @@
     <string name="search_start_typing">Начните вводить запрос</string>
     <string name="search_nothing_found">Ничего не найдено</string>
     <string name="search_history_remove">Удалить из истории</string>
+    <string name="search_history">История</string>
+    <string name="search_history_clear">Очистить</string>
 
     <string name="pagination_prev">Назад</string>
     <string name="pagination_next">Вперёд</string>

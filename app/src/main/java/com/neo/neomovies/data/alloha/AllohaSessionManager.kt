@@ -33,6 +33,8 @@ class AllohaSessionManager(private val context: Context) {
     var hlsProxy: HlsProxyServer? = null
         private set
 
+    @Volatile private var isRestarting = false
+
     /** The current master.m3u8 CDN URL captured from the iframe. */
     @Volatile
     var currentM3u8Url: String = ""
@@ -86,9 +88,11 @@ class AllohaSessionManager(private val context: Context) {
         }
         if (hlsProxy == null) {
             hlsProxy = HlsProxyServer(activeHeaders, onSessionExpired = {
+                if (isRestarting) return@HlsProxyServer
                 val iframe = parser?.lastIframeUrl
                 if (!iframe.isNullOrBlank()) {
                     Log.d(TAG, "Proxy: session expired, forcing restart")
+                    isRestarting = true
                     startSession(iframe, isRestart = true)
                 }
             })
@@ -222,6 +226,7 @@ class AllohaSessionManager(private val context: Context) {
                     } else if (isRestart) {
                         // Proactive restart: update URL silently — no cache reset, player keeps playing
                         hlsProxy?.updateMasterUrlSilently(url)
+                        isRestarting = false
                         Log.d(TAG, "Proactive restart: CDN URL updated silently")
                     } else {
                         hlsProxy?.updateMasterUrl(url)
@@ -236,6 +241,7 @@ class AllohaSessionManager(private val context: Context) {
 
             override fun onError(error: String) {
                 Log.e(TAG, "Parser error: $error")
+                isRestarting = false
                 this@AllohaSessionManager.onError?.invoke(error)
             }
         })
@@ -251,30 +257,33 @@ class AllohaSessionManager(private val context: Context) {
         activeHeaders.clear()
     }
 
-    private fun pickBestQuality(context: Context, qualities: Map<String, String>): String {
-        val supportsAv1 = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.any { info ->
-            !info.isEncoder && info.supportedTypes.any { it.equals(MediaFormat.MIMETYPE_VIDEO_AV1, ignoreCase = true) }
-        }
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
-        val isWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-        val downMbps = caps?.linkDownstreamBandwidthKbps?.div(1000) ?: 0
+    private fun pickBestQuality(context: Context, qualities: Map<String, String>): String =
+        pickBestQualityPublic(context, qualities)
 
-        // Auto quality caps at 1080p — higher resolutions (2K/4K) require AV1 and manual selection.
-        // AV1 constraint: if not supported, 1080p is the ceiling regardless of bandwidth.
-        val maxRes = when {
-            !supportsAv1 -> 1080
-            isWifi || downMbps >= 10 -> 1080
-            downMbps >= 5 -> 720
-            else -> 480
-        }
+    companion object {
+        fun pickBestQualityPublic(context: Context, qualities: Map<String, String>): String {
+            val supportsAv1 = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.any { info ->
+                !info.isEncoder && info.supportedTypes.any { it.equals(MediaFormat.MIMETYPE_VIDEO_AV1, ignoreCase = true) }
+            }
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+            val isWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+            val downMbps = caps?.linkDownstreamBandwidthKbps?.div(1000) ?: 0
 
-        val ordered = listOf("1080", "720", "480", "360")
-            .filter { (it.toIntOrNull() ?: 0) <= maxRes }
-        return ordered.firstOrNull { qualities.containsKey(it) }
-            ?: listOf("1080", "720", "480", "360", "1440", "2160")
-                .firstOrNull { qualities.containsKey(it) }
-            ?: qualities.keys.first()
+            val maxRes = when {
+                !supportsAv1 -> 1080
+                isWifi || downMbps >= 10 -> 1080
+                downMbps >= 5 -> 720
+                else -> 480
+            }
+
+            val ordered = listOf("1080", "720", "480", "360")
+                .filter { (it.toIntOrNull() ?: 0) <= maxRes }
+            return ordered.firstOrNull { qualities.containsKey(it) }
+                ?: listOf("1080", "720", "480", "360", "1440", "2160")
+                    .firstOrNull { qualities.containsKey(it) }
+                ?: qualities.keys.first()
+        }
     }
 
     private fun parseSkipRanges(skipTime: String): List<LongRange> {

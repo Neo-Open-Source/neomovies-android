@@ -108,8 +108,8 @@ fun SettingsScreen(
             )
 
             PreferenceItem(
-                title = "Канал обновлений",
-                description = if (currentChannel == UpdateChecker.UpdateChannel.PRERELEASE) "Пре-релизы" else "Стабильные",
+                title = stringResource(R.string.settings_update_channel),
+                description = if (currentChannel == UpdateChecker.UpdateChannel.PRERELEASE) stringResource(R.string.settings_update_channel_prerelease) else stringResource(R.string.settings_update_channel_stable),
                 icon = Icons.Outlined.SystemUpdate,
                 onClick = { showChannelDialog = true },
             )
@@ -119,12 +119,12 @@ fun SettingsScreen(
     if (showChannelDialog) {
         AlertDialog(
             onDismissRequest = { showChannelDialog = false },
-            title = { Text("Канал обновлений") },
+            title = { Text(stringResource(R.string.settings_update_channel)) },
             text = {
                 Column {
                     listOf(
-                        UpdateChecker.UpdateChannel.STABLE to "Стабильные релизы",
-                        UpdateChecker.UpdateChannel.PRERELEASE to "Пре-релизы",
+                        UpdateChecker.UpdateChannel.STABLE to stringResource(R.string.settings_update_channel_stable),
+                        UpdateChecker.UpdateChannel.PRERELEASE to stringResource(R.string.settings_update_channel_prerelease),
                     ).forEach { (ch, label) ->
                         androidx.compose.foundation.layout.Row(
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,

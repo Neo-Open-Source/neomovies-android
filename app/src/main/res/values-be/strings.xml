@@ -152,6 +152,7 @@
     <string name="lumex_select_episode">Серыя</string>
     <string name="lumex_select_voiceover">Агучванне</string>
     <string name="lumex_select_quality">Якасць</string>
+    <string name="quality_auto">Аўта</string>
     <string name="lumex_no_data">Няма даступных крыніц</string>
 
     <string name="common_error">Памылка</string>
@@ -224,4 +225,20 @@
     <string name="downloaded_label">Спампавана</string>
     <string name="download_in_progress">Спампоўванне %1$d%%</string>
     <string name="download_complete">Спампавана</string>
+
+    <string-array name="changes_history">
+        <item>0.1.0-pre6||- Дадана крыніца Alloha: HLS-проксі, выбар агучкі, субтытры, прапуск інтра/аутра, аўта-якасць.\n- Пераключэнне серый у плееры (кнопкі |&lt; і &gt;|).\n- Выпраўлены TV-плеер: навігацыя D-pad, кнопка Back, агучкі і субтытры.\n- Аптымізацыя UI: плаўная загрузка постараў, паскарэнне спісаў.\n- Дададзены мовы: украінская, беларуская, румынская.\n- Аўта-абнаўленне праз GitHub Releases.</item>
+        <item>0.1.0-pre5||- Абноўлены мадэлі API для пошуку і абраных.\n- Дадана загрузка серый для афлайн-прагляду.\n- Выпраўлены розныя памылкі і паляпшэнне стабільнасці.</item>
+        <item>0.1.0-pre4||- Дададзены новыя функцыі ў TV-плеер і выпраўленні асноўнага плеера.\n- Дадана пераключэнне серый у крыніцы Collaps.</item>
+        <item>0.1.0-pre3||- Выпраўленне памылак і перапісаны плеер для тэлевізараў.</item>
+        <item>0.1.0-pre2||- Дадан плеер Collaps і версія для тэлевізараў.</item>
+        <item>0.1.0-pre1||- Першы пра-рэліз\n- Дададзены плееры: ExoPlayer і libMPV\n- Дадан Torrserver і дробныя выпраўленні.</item>
+    </string-array>
+    <string name="settings_update_channel">Канал абнаўленняў</string>
+    <string name="settings_update_channel_stable">Стабільныя рэлізы</string>
+    <string name="settings_update_channel_prerelease">Пра-рэлізы</string>
+    <string name="about_check_update">Праверыць абнаўленні</string>
+    <string name="about_check_update_desc">Націсніце для праверкі новай версіі</string>
+    <string name="about_check_update_checking">Правяраем…</string>
+    <string name="about_check_update_latest">У вас апошняя версія</string>
 </resources>

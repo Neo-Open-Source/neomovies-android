@@ -83,8 +83,13 @@ fun TvWatchSelectorScreen(
     var allohaParsingIframe by remember { mutableStateOf<String?>(null) }
     var allohaParsingStatus by remember { mutableStateOf<String?>(null) }
 
-    DisposableEffect(allohaSession) {
-        onDispose { allohaSession?.release() }
+    DisposableEffect(Unit) {
+        onDispose {
+            // Only release if we're not going to the player (session is still needed there)
+            if (AllohaSessionHolder.session !== allohaSession) {
+                allohaSession?.release()
+            }
+        }
     }
 
     LaunchedEffect(

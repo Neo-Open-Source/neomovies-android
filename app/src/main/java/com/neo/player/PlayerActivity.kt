@@ -50,6 +50,7 @@ class PlayerActivity : BasePlayerActivity() {
     lateinit var binding: ActivityPlayerBinding
 
     private val handler = Handler(Looper.getMainLooper())
+    private var allohaForwardingPlayer: androidx.media3.common.ForwardingPlayer? = null
 
     override val viewModel: PlayerViewModel by viewModels()
 
@@ -168,16 +169,44 @@ class PlayerActivity : BasePlayerActivity() {
 
         // For Alloha: wrap player so exo_prev/exo_next switch episodes natively via ForwardingPlayer
         if (isAllohaSource) {
-            val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(viewModel.player) {
-                override fun hasPreviousMediaItem() =
-                    com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex > 0
-                override fun hasNextMediaItem() =
-                    com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex <
-                        com.neo.neomovies.data.alloha.AllohaSessionHolder.episodeIframeUrls.size - 1
+            allohaForwardingPlayer = object : androidx.media3.common.ForwardingPlayer(viewModel.player) {
+                private fun hasPrev() = com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex > 0
+                private fun hasNext() = com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex <
+                    com.neo.neomovies.data.alloha.AllohaSessionHolder.episodeIframeUrls.size - 1
+
+                override fun hasPreviousMediaItem() = hasPrev()
+                override fun hasNextMediaItem() = hasNext()
+                // PlayerControlView calls seekToNext/seekToPrevious (not MediaItem variants)
+                override fun seekToPrevious() { switchAllohaEpisode(-1) }
+                override fun seekToNext() { switchAllohaEpisode(+1) }
                 override fun seekToPreviousMediaItem() { switchAllohaEpisode(-1) }
                 override fun seekToNextMediaItem() { switchAllohaEpisode(+1) }
+
+                override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
+                    return super.getAvailableCommands().buildUpon()
+                        .apply {
+                            if (hasPrev()) {
+                                add(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS)
+                                add(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                            } else {
+                                remove(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS)
+                                remove(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                            }
+                            if (hasNext()) {
+                                add(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT)
+                                add(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                            } else {
+                                remove(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT)
+                                remove(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                            }
+                        }
+                        .build()
+                }
+
+                override fun isCommandAvailable(command: Int): Boolean =
+                    getAvailableCommands().contains(command)
             }
-            binding.playerView.player = forwardingPlayer
+            binding.playerView.player = allohaForwardingPlayer
         }
 
         val videoNameTextView = binding.playerView.findViewById<TextView>(R.id.video_name)
@@ -433,7 +462,7 @@ class PlayerActivity : BasePlayerActivity() {
         val kinopoiskId = intent.getIntExtra(EXTRA_KINOPOISK_ID, -1).takeIf { it > 0 }
 
         viewModel.setEngine(useExo)
-        binding.playerView.player = viewModel.player
+        binding.playerView.player = allohaForwardingPlayer ?: viewModel.player
         viewModel.initializePlayer(
             urls = urls ?: listOf(url),
             names = names,
@@ -562,20 +591,29 @@ class PlayerActivity : BasePlayerActivity() {
         val iframeUrl = holder.episodeIframeUrls[newIdx].takeIf { it.isNotBlank() } ?: return
         val session = holder.session ?: return
 
+        // Save progress for current episode before switching
+        viewModel.updatePlaybackProgress()
+
         holder.currentEpisodeIndex = newIdx
         val episodeName = holder.episodeNames.getOrNull(newIdx) ?: ""
 
         val videoNameTextView = binding.playerView.findViewById<android.widget.TextView>(R.id.video_name)
-        videoNameTextView.text = getString(com.neo.neomovies.R.string.alloha_parsing_stream)
+        // Preserve show title: "Игра престолов • S01E02"
+        val currentTitle = videoNameTextView.text.toString()
+        val baseTitle = if (currentTitle.contains(" • ")) currentTitle.substringBefore(" • ") else currentTitle
+        val displayTitle = if (baseTitle.isNotBlank() && baseTitle != getString(com.neo.neomovies.R.string.alloha_parsing_stream)) "$baseTitle • $episodeName" else episodeName
 
         session.onStreamReady = { _, _ -> }
         session.onM3u8Updated = { _ ->
             runOnUiThread {
-                videoNameTextView.text = episodeName
+                videoNameTextView.text = displayTitle
                 viewModel.resetAudioOverride()
+                viewModel.clearEpisodeProgress(newIdx)
                 viewModel.player.stop()
+                viewModel.player.seekTo(0)
                 viewModel.player.prepare()
                 viewModel.player.playWhenReady = true
+                binding.playerView.player = allohaForwardingPlayer
             }
         }
         session.onError = { error ->
@@ -592,26 +630,34 @@ class PlayerActivity : BasePlayerActivity() {
         val qualityMap = session.lastQualityMap
         if (qualityMap.isEmpty()) return
 
-        // Order: highest to lowest
         val orderedKeys = listOf("2160", "1440", "1080", "720", "480", "360")
             .filter { qualityMap.containsKey(it) }
         if (orderedKeys.isEmpty()) return
 
-        val labels = orderedKeys.map { "${it}p" }.toTypedArray()
-        val currentIdx = orderedKeys.indexOf(holder.currentQuality).coerceAtLeast(0)
+        val autoLabel = getString(com.neo.neomovies.R.string.quality_auto)
+        val allKeys = listOf("") + orderedKeys  // "" = auto
+        val labels = (listOf(autoLabel) + orderedKeys.map { "${it}p" }).toTypedArray()
+        val currentIdx = if (holder.isAutoQuality) 0 else allKeys.indexOf(holder.currentQuality).coerceAtLeast(0)
 
         android.app.AlertDialog.Builder(this)
             .setTitle(getString(com.neo.neomovies.R.string.lumex_select_quality))
             .setSingleChoiceItems(labels, currentIdx) { dialog, which ->
                 dialog.dismiss()
-                val newKey = orderedKeys[which]
-                if (newKey == holder.currentQuality) return@setSingleChoiceItems
+                val newKey = allKeys[which]
+                if (newKey == holder.currentQuality && holder.isAutoQuality == (which == 0)) return@setSingleChoiceItems
 
-                holder.currentQuality = newKey
-                session.switchQuality(newKey)
+                if (newKey.isBlank()) {
+                    holder.isAutoQuality = true
+                    holder.currentQuality = ""
+                    val bestKey = com.neo.neomovies.data.alloha.AllohaSessionManager
+                        .pickBestQualityPublic(this, qualityMap)
+                    session.switchQuality(bestKey)
+                } else {
+                    holder.isAutoQuality = false
+                    holder.currentQuality = newKey
+                    session.switchQuality(newKey)
+                }
 
-                // Force ExoPlayer to reload from proxy with the new quality URL.
-                // stop() invalidates the cached HLS manifest; prepare() re-fetches.
                 viewModel.resetAudioOverride()
                 viewModel.player.stop()
                 viewModel.player.prepare()
@@ -649,11 +695,10 @@ class PlayerActivity : BasePlayerActivity() {
 
         // Save current position so we know the user was at this point
         viewModel.updatePlaybackProgress()
+        val wasPlaying = viewModel.player.playWhenReady
 
-        // Show a brief loading indicator
         val videoNameTextView = binding.playerView.findViewById<android.widget.TextView>(R.id.video_name)
         val originalTitle = videoNameTextView.text
-        videoNameTextView.text = getString(com.neo.neomovies.R.string.alloha_parsing_stream)
 
         session.onStreamReady = { _, _ ->
             // Don't re-prepare yet: CDN auth (config_update) hasn't arrived.
@@ -668,20 +713,14 @@ class PlayerActivity : BasePlayerActivity() {
         }
 
         session.onM3u8Updated = { _ ->
-            val currentTitle = originalTitle?.toString() ?: ""
-            val newTitle = if (currentTitle.contains(" - ")) {
-                currentTitle.substringBefore(" - ") + " - $translationName"
-            } else {
-                "$currentTitle - $translationName"
-            }
             runOnUiThread {
-                videoNameTextView.text = newTitle
+                videoNameTextView.text = originalTitle
                 // Reset audio override so Russian track is selected on new translation
                 viewModel.resetAudioOverride()
                 // Force reload: stop() invalidates cached manifest, prepare() re-fetches
                 viewModel.player.stop()
                 viewModel.player.prepare()
-                viewModel.player.playWhenReady = true
+                viewModel.player.playWhenReady = wasPlaying
             }
         }
 

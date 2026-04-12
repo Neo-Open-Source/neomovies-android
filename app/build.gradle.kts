@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -48,9 +50,9 @@ android {
         tvSourceSetNames.forEach { name ->
             maybeCreate(name).apply {
                 manifest.srcFile(tvSrcManifest)
-                java.setSrcDirs(listOf(tvSrcJava))
-                kotlin.setSrcDirs(listOf(tvSrcJava))
-                res.setSrcDirs(listOf(tvSrcRes))
+                java.srcDirs(tvSrcJava)
+                kotlin.srcDirs(tvSrcJava)
+                res.srcDirs(tvSrcRes)
             }
         }
     }
@@ -91,7 +93,7 @@ android {
 
         val envVersion = parseVersionName(System.getenv("APP_VERSION"))
         val tagVersion = parseVersionName(System.getenv("GITHUB_REF_NAME"))
-        val finalVersionName = envVersion ?: tagVersion ?: "0.1.0-pre5"
+        val finalVersionName = envVersion ?: tagVersion ?: "0.1.0-pre6"
         versionName = finalVersionName
         versionCode = computeVersionCode(finalVersionName)
 
@@ -208,13 +210,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        freeCompilerArgs += listOf("-Xannotation-default-target=param-property")
-    }
     buildFeatures {
         compose = true
         buildConfig = true
         viewBinding = true
+    }
+    kotlin {
+        compilerOptions {
+            freeCompilerArgs.addAll("-Xannotation-default-target=param-property")
+        }
     }
 }
 

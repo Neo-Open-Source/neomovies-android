@@ -1,11 +1,14 @@
 package com.neo.tv.presentation.player.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.ClosedCaption
@@ -55,11 +58,38 @@ fun TvVideoPlayerControls(
     var showAudioDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showAllohaQualityDialog by remember { mutableStateOf(false) }
     var showAllohaTranslationDialog by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(player.isPlaying) }
 
-    val isAlloha = remember {
+    val tracksVersion by viewModel.tracksVersion.collectAsStateWithLifecycleCompat()
+    val isAlloha = remember(tracksVersion) {
         com.neo.neomovies.data.alloha.AllohaSessionHolder.translationNames.size > 1
+    }
+    val allohaHolder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+    // Recompute on every recomposition — session is set before player screen opens
+    val isAllohaSource = allohaHolder.session != null
+    val hasEpisodes = allohaHolder.episodeIframeUrls.size > 1
+
+    fun switchAllohaEpisode(delta: Int) {
+        val holder = allohaHolder
+        val newIndex = holder.currentEpisodeIndex + delta
+        if (newIndex < 0 || newIndex >= holder.episodeIframeUrls.size) return
+        val iframeUrl = holder.episodeIframeUrls[newIndex].takeIf { it.isNotBlank() } ?: return
+        val session = holder.session ?: return
+        viewModel.updatePlaybackProgress()
+        holder.currentEpisodeIndex = newIndex
+        session.onStreamReady = { _, _ -> }
+        session.onM3u8Updated = { _ ->
+            viewModel.resetAudioOverride()
+            viewModel.clearEpisodeProgress(newIndex)
+            player.stop()
+            player.seekTo(0)
+            player.prepare()
+            player.playWhenReady = true
+        }
+        session.onError = { }
+        session.startSession(iframeUrl)
     }
 
     LaunchedEffect(isControlsVisible) {
@@ -94,6 +124,17 @@ fun TvVideoPlayerControls(
         )
     }
 
+    var isSwitchingTranslation by remember { mutableStateOf(false) }
+
+    if (isSwitchingTranslation) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            androidx.compose.material3.CircularProgressIndicator()
+        }
+    }
+
     if (showAllohaTranslationDialog) {
         val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -105,6 +146,7 @@ fun TvVideoPlayerControls(
                 val session = holder.session ?: return@AllohaTranslationDialog
                 if (name == holder.currentTranslation) return@AllohaTranslationDialog
 
+                isSwitchingTranslation = true
                 viewModel.updatePlaybackProgress()
 
                 session.onStreamReady = { _, m3u8Url ->
@@ -114,10 +156,13 @@ fun TvVideoPlayerControls(
                         .edit()
                         .putString("last_translation_name", name)
                         .apply()
+                    viewModel.resetAudioOverride()
+                    player.stop()
                     player.prepare()
                     player.playWhenReady = true
+                    isSwitchingTranslation = false
                 }
-                session.onError = { /* ignore */ }
+                session.onError = { isSwitchingTranslation = false }
                 session.startSession(iframeUrl)
             },
             onDismiss = { showAllohaTranslationDialog = false },
@@ -131,6 +176,53 @@ fun TvVideoPlayerControls(
             viewModel = viewModel,
             onDismiss = { showQualityDialog = false },
         )
+    }
+
+    if (showAllohaQualityDialog) {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val session = holder.session
+        val qualityMap = session?.lastQualityMap ?: emptyMap()
+        val orderedKeys = listOf("2160", "1440", "1080", "720", "480", "360").filter { qualityMap.containsKey(it) }
+        val context = androidx.compose.ui.platform.LocalContext.current
+        if (orderedKeys.isNotEmpty() && session != null) {
+            val autoLabel = stringResource(R.string.quality_auto)
+            val allKeys = listOf("") + orderedKeys
+            val labels = listOf(autoLabel) + orderedKeys.map { "${it}p" }
+            val currentIdx = if (holder.isAutoQuality) 0 else allKeys.indexOf(holder.currentQuality).coerceAtLeast(0)
+            Dialog(onDismissRequest = { showAllohaQualityDialog = false }) {
+                Surface(shape = MaterialTheme.shapes.large) {
+                    Column(modifier = Modifier.padding(24.dp).widthIn(min = 320.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.lumex_select_quality), style = MaterialTheme.typography.titleMedium)
+                        labels.forEachIndexed { idx, label ->
+                            TrackSelectionRow(
+                                text = label,
+                                selected = idx == currentIdx,
+                                onClick = {
+                                    showAllohaQualityDialog = false
+                                    val newKey = allKeys[idx]
+                                    if (newKey.isBlank()) {
+                                        holder.isAutoQuality = true
+                                        holder.currentQuality = ""
+                                        val best = com.neo.neomovies.data.alloha.AllohaSessionManager.pickBestQualityPublic(context, qualityMap)
+                                        session.switchQuality(best)
+                                    } else {
+                                        holder.isAutoQuality = false
+                                        holder.currentQuality = newKey
+                                        session.switchQuality(newKey)
+                                    }
+                                    viewModel.resetAudioOverride()
+                                    player.stop()
+                                    player.prepare()
+                                    player.playWhenReady = true
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            showAllohaQualityDialog = false
+        }
     }
 
     TvVideoPlayerMainFrame(
@@ -158,9 +250,8 @@ fun TvVideoPlayerControls(
                     icon = Icons.Default.SkipPrevious,
                     isPlaying = player.isPlaying,
                     onClick = {
-                        if (player.hasPreviousMediaItem()) {
-                            player.seekToPreviousMediaItem()
-                        }
+                        if (hasEpisodes) switchAllohaEpisode(-1)
+                        else if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
                         onShowControls()
                     },
                 )
@@ -168,9 +259,8 @@ fun TvVideoPlayerControls(
                     icon = Icons.Default.SkipNext,
                     isPlaying = player.isPlaying,
                     onClick = {
-                        if (player.hasNextMediaItem()) {
-                            player.seekToNextMediaItem()
-                        }
+                        if (hasEpisodes) switchAllohaEpisode(+1)
+                        else if (player.hasNextMediaItem()) player.seekToNextMediaItem()
                         onShowControls()
                     },
                 )
@@ -178,7 +268,7 @@ fun TvVideoPlayerControls(
                     icon = Icons.AutoMirrored.Filled.VolumeUp,
                     isPlaying = player.isPlaying,
                     onClick = {
-                        if (isAlloha) {
+                        if (isAllohaSource) {
                             showAllohaTranslationDialog = true
                         } else {
                             showAudioDialog = true
@@ -194,12 +284,13 @@ fun TvVideoPlayerControls(
                         onShowControls()
                     },
                 )
-                if (useCollapsHeaders) {
+                if (useCollapsHeaders || isAllohaSource) {
                     TvVideoPlayerControlsIcon(
                         icon = Icons.Default.Settings,
                         isPlaying = player.isPlaying,
                         onClick = {
-                            showQualityDialog = true
+                            if (isAllohaSource) showAllohaQualityDialog = true
+                            else showQualityDialog = true
                             onShowControls()
                         },
                     )
@@ -304,8 +395,8 @@ fun AllohaTranslationDialog(
     val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.large),
-            colors = ClickableSurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = MaterialTheme.shapes.large,
+            colors = androidx.tv.material3.SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
             Column(
                 modifier = Modifier

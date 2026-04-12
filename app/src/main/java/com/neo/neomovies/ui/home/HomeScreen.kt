@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.remember
 import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.MediaPosterCard
 import com.neo.neomovies.ui.navigation.CategoryType
@@ -118,6 +119,14 @@ fun HomeScreen(
             }
 
             HomeMode.Content -> {
+                val screenWidthDp = LocalConfiguration.current.screenWidthDp
+                val cardWidth: Dp = remember(screenWidthDp) {
+                    when {
+                        screenWidthDp >= 900 -> 200.dp
+                        screenWidthDp >= 600 -> 170.dp
+                        else -> 130.dp
+                    }
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 24.dp),
@@ -147,6 +156,7 @@ fun HomeScreen(
                             items = state.popular,
                             onMore = { onOpenCategory(CategoryType.POPULAR) },
                             onOpenDetails = onOpenDetails,
+                            cardWidth = cardWidth,
                         )
                     }
 
@@ -156,6 +166,7 @@ fun HomeScreen(
                             items = state.topMovies,
                             onMore = { onOpenCategory(CategoryType.TOP_MOVIES) },
                             onOpenDetails = onOpenDetails,
+                            cardWidth = cardWidth,
                         )
                     }
 
@@ -165,6 +176,7 @@ fun HomeScreen(
                             items = state.topTv,
                             onMore = { onOpenCategory(CategoryType.TOP_TV) },
                             onOpenDetails = onOpenDetails,
+                            cardWidth = cardWidth,
                         )
                     }
                 }
@@ -185,55 +197,52 @@ private fun HomeSection(
     items: List<com.neo.neomovies.data.network.dto.MediaDto>,
     onMore: () -> Unit,
     onOpenDetails: (String) -> Unit,
+    cardWidth: Dp,
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val cardWidth: Dp = when {
-            maxWidth >= 900.dp -> 200.dp
-            maxWidth >= 600.dp -> 170.dp
-            else -> 130.dp
+    val displayItems = remember(items) { items.take(12) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onMore, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = stringResource(R.string.action_more),
+                )
+            }
         }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f),
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(displayItems, key = { item ->
+                when (val v = item.id) {
+                    is Number -> v.toLong()
+                    else -> v?.toString() ?: item.hashCode()
+                }
+            }) { item ->
+                val rawId = when (val v = item.id) {
+                    is Number -> v.toLong().toString()
+                    else -> v?.toString()
+                }
+                val sourceId = rawId?.let { if (it.contains("_")) it else "kp_$it" }
+                MediaPosterCard(
+                    item = item,
+                    modifier = Modifier.width(cardWidth),
+                    onClick = { if (sourceId != null) onOpenDetails(sourceId) },
                 )
-                IconButton(onClick = onMore, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = stringResource(R.string.action_more),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(items.take(12)) { item ->
-                    val rawId = when (val v = item.id) {
-                        is Number -> v.toLong().toString()
-                        else -> v?.toString()
-                    }
-                    // API returns id as "kp_12345" already
-                    val sourceId = rawId?.let {
-                        if (it.contains("_")) it else "kp_$it"
-                    }
-                    MediaPosterCard(
-                        item = item,
-                        modifier = Modifier.width(cardWidth),
-                        onClick = { if (sourceId != null) onOpenDetails(sourceId) },
-                    )
-                }
             }
         }
     }

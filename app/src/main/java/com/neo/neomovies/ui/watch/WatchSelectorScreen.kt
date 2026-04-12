@@ -303,6 +303,7 @@ fun WatchSelectorScreen(
                     )
                     AllohaSessionHolder.qualityMap = allohaSession.lastQualityMap
                     AllohaSessionHolder.currentQuality = allohaSession.lastSelectedQuality
+                    AllohaSessionHolder.isAutoQuality = true
 
                     onWatch(
                         arrayListOf(proxyUrl),

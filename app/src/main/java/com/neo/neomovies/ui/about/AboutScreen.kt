@@ -51,10 +51,20 @@ fun AboutScreen(
 
     var updateInfo by remember { mutableStateOf<com.neo.neomovies.update.ReleaseInfo?>(null) }
     var updateChecked by remember { mutableStateOf(false) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         updateInfo = UpdateChecker.checkForUpdate(context)
         updateChecked = true
+    }
+
+    fun checkNow() {
+        scope.launch {
+            isCheckingUpdate = true
+            updateInfo = UpdateChecker.checkForUpdate(context)
+            updateChecked = true
+            isCheckingUpdate = false
+        }
     }
 
     Scaffold(
@@ -80,6 +90,18 @@ fun AboutScreen(
                         icon = Icons.Outlined.SystemUpdate,
                     ) { uriHandler.openUri(info.apkUrl ?: info.htmlUrl) }
                 }
+            }
+
+            item {
+                PreferenceItem(
+                    title = stringResource(R.string.about_check_update),
+                    description = when {
+                        isCheckingUpdate -> stringResource(R.string.about_check_update_checking)
+                        updateChecked && updateInfo == null -> stringResource(R.string.about_check_update_latest)
+                        else -> stringResource(R.string.about_check_update_desc)
+                    },
+                    icon = Icons.Outlined.SystemUpdate,
+                ) { checkNow() }
             }
 
             item {
