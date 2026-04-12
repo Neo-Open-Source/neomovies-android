@@ -12,6 +12,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackGroup
@@ -143,9 +144,16 @@ class PlayerViewModel(
             builder.build()
         } else {
             val trackSelector = DefaultTrackSelector(getApplication()).apply {
-                parameters = buildUponParameters()
+                val builder = buildUponParameters()
                     .setAllowInvalidateSelectionsOnRendererCapabilitiesChange(true)
-                    .build()
+                // Alloha HLS: prefer H264 (widely supported) and Russian audio
+                if (isAlloha) {
+                    builder
+                        .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
+                        .setPreferredAudioLanguage("ru")
+                        .setPreferredTextLanguage("ru")
+                }
+                parameters = builder.build()
             }
 
             val extractorsFactory = DefaultExtractorsFactory()

@@ -327,9 +327,9 @@ fun NeoMoviesApp(
                         onBack = { navController.popBackStack() },
                         onWatch = { urls, names, startIndex, title, kinopoiskId, episodeProgressCallback ->
                             val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
-                            val useCollapsHeaders =
-                                com.neo.neomovies.ui.settings.SourceManager.getMode(context) ==
-                                    com.neo.neomovies.ui.settings.SourceMode.COLLAPS
+                            val sourceMode = com.neo.neomovies.ui.settings.SourceManager.getMode(context)
+                            val useCollapsHeaders = sourceMode == com.neo.neomovies.ui.settings.SourceMode.COLLAPS
+                            val isAlloha = sourceMode == com.neo.neomovies.ui.settings.SourceMode.ALLOHA
                             context.startActivity(
                                 when (mode) {
                                     com.neo.neomovies.ui.settings.PlayerEngineMode.EXO ->
@@ -340,6 +340,7 @@ fun NeoMoviesApp(
                                             startIndex = startIndex,
                                             title = title,
                                             useCollapsHeaders = useCollapsHeaders,
+                                            isAlloha = isAlloha,
                                             kinopoiskId = kinopoiskId,
                                             episodeProgressCallback = episodeProgressCallback,
                                         )
@@ -351,6 +352,7 @@ fun NeoMoviesApp(
                                             startIndex = startIndex,
                                             title = title,
                                             useCollapsHeaders = useCollapsHeaders,
+                                            isAlloha = isAlloha,
                                             kinopoiskId = kinopoiskId,
                                             episodeProgressCallback = episodeProgressCallback,
                                         )
