@@ -259,8 +259,7 @@ class PlayerViewModel(
         // Alloha: URLs go through a local HLS proxy -- use OkHttpDataSource + HlsMediaSource
         // directly, bypassing the built-in MediaSourceFactory (which uses DefaultHttpDataSource
         // + CacheDataSource that can't connect to localhost).
-        val isAllohaProxy = resolvedUrls.any { it.contains("127.0.0.1:8080") }
-        if (useExo && isAllohaProxy) {
+        if (useExo && isAlloha) {
             val activeHeaders = com.neo.neomovies.data.alloha.AllohaSessionHolder.session?.activeHeaders.orEmpty()
             val okClient = okhttp3.OkHttpClient.Builder()
                 .followRedirects(true)

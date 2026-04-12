@@ -19,11 +19,14 @@ private const val PREFETCH = 2
 
 class HlsProxyServer(
     private val activeHeaders: Map<String, String>,
-    private val port: Int = 8080,
     private val onSessionExpired: () -> Unit = {}
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverSocket: ServerSocket? = null
+
+    /** Actual port assigned by the OS (available after [start]). */
+    var port: Int = 0
+        private set
 
     val fixedMasterUrl: String get() = "http://127.0.0.1:$port/master.m3u8"
 
@@ -72,7 +75,8 @@ class HlsProxyServer(
     private val recentSegments = ArrayDeque<String>()
 
     fun start() {
-        serverSocket = ServerSocket(port)
+        serverSocket = ServerSocket(0)  // OS picks a free port
+        port = serverSocket!!.localPort
         scope.launch {
             Log.d(TAG, "HLS proxy started on port $port")
             while (isActive) {
