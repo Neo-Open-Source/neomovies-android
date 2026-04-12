@@ -153,6 +153,7 @@ class PlayerViewModel(
                         .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
                         .setPreferredAudioLanguage("ru")
                         .setPreferredTextLanguage("ru")
+                        .setSelectUndeterminedTextLanguage(true)
                 }
                 parameters = builder.build()
             }
@@ -254,7 +255,7 @@ class PlayerViewModel(
             _uiState.update { it.copy(currentItemTitle = buildDisplayTitle(initialItem)) }
         }
 
-        val startPosition = if (startFromBeginning) 0L else prefs.getLong("pos_$currentUrl", 0L)
+        val startPosition = if (startFromBeginning || isAlloha) 0L else prefs.getLong("pos_$currentUrl", 0L)
 
         // Alloha: URLs go through a local HLS proxy -- use OkHttpDataSource + HlsMediaSource
         // directly, bypassing the built-in MediaSourceFactory (which uses DefaultHttpDataSource
@@ -311,17 +312,35 @@ class PlayerViewModel(
         _tracksVersion.update { it + 1 }
         if (!useExo || !forceFirstAudioTrack || appliedFirstAudioOverride) return
 
-        val group = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO } ?: return
-        val trackGroup = group.mediaTrackGroup
-        
-        if (trackGroup.length > 0) {
-            player.trackSelectionParameters = player.trackSelectionParameters
-                .buildUpon()
-                .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
-                .setOverrideForType(TrackSelectionOverride(trackGroup, listOf(0)))
-                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
-                .build()
+        val audioGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
+
+        if (isAlloha) {
+            // For Alloha: only override when there are multiple separate audio groups.
+            // For a single group with multiple tracks (e.g. ru + en renditions),
+            // setPreferredAudioLanguage("ru") handles selection — forcing index 0
+            // would pick English when it comes first in the playlist.
+            if (audioGroups.size > 1) {
+                val trackGroup = audioGroups[0].mediaTrackGroup
+                player.trackSelectionParameters = player.trackSelectionParameters
+                    .buildUpon()
+                    .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                    .setOverrideForType(TrackSelectionOverride(trackGroup, listOf(0)))
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    .build()
+            }
             appliedFirstAudioOverride = true
+        } else {
+            val group = audioGroups.firstOrNull() ?: return
+            val trackGroup = group.mediaTrackGroup
+            if (trackGroup.length > 0) {
+                player.trackSelectionParameters = player.trackSelectionParameters
+                    .buildUpon()
+                    .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                    .setOverrideForType(TrackSelectionOverride(trackGroup, listOf(0)))
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    .build()
+                appliedFirstAudioOverride = true
+            }
         }
     }
 
@@ -505,16 +524,16 @@ class PlayerViewModel(
 
     override fun onPlayerError(error: PlaybackException) {
         Log.e("PlayerVM", "Player error: ${error.errorCodeName}", error)
-        // For Alloha streams, try restarting the session on CDN errors (403/503)
         if (isAlloha) {
             val session = com.neo.neomovies.data.alloha.AllohaSessionHolder.session
             val iframeUrl = session?.parser?.lastIframeUrl
             if (!iframeUrl.isNullOrBlank()) {
+                val wasPlaying = player.playWhenReady
                 Log.d("PlayerVM", "Alloha CDN error, restarting session from ${player.currentPosition}ms")
                 session.onM3u8Updated = { _ ->
                     appliedFirstAudioOverride = false
                     player.prepare()
-                    player.playWhenReady = true
+                    player.playWhenReady = wasPlaying
                 }
                 session.startSession(iframeUrl, isRestart = true)
                 return

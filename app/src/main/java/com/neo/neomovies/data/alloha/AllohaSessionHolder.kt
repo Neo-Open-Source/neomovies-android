@@ -35,6 +35,16 @@ object AllohaSessionHolder {
         currentTranslation = current
     }
 
+    /** Skip ranges from bnsi skipTime (start/end in seconds). */
+    @Volatile
+    var skipRanges: List<LongRange> = emptyList()
+
+    /** Episode list for in-player switching: iframe URLs (parallel to [episodeNames]). */
+    var episodeIframeUrls: List<String> = emptyList()
+    var episodeNames: List<String> = emptyList()
+    @Volatile
+    var currentEpisodeIndex: Int = 0
+
     fun clear() {
         session = null
         translationNames = emptyList()
@@ -42,5 +52,9 @@ object AllohaSessionHolder {
         currentTranslation = ""
         qualityMap = emptyMap()
         currentQuality = ""
+        skipRanges = emptyList()
+        episodeIframeUrls = emptyList()
+        episodeNames = emptyList()
+        currentEpisodeIndex = 0
     }
 }

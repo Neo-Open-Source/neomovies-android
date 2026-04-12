@@ -252,10 +252,9 @@ fun WatchSelectorScreen(
                 val episodeNum = state.selectedEpisodeNumber
                 val translationName = state.allohaTranslationName ?: ""
                 val episodeName = if (seasonNum != null && episodeNum != null) {
-                    val se = "S%02dE%02d".format(seasonNum, episodeNum)
-                    if (translationName.isNotBlank()) "$se - $translationName" else se
+                    "S%02dE%02d".format(seasonNum, episodeNum)
                 } else {
-                    translationName.ifBlank { effectiveTitle ?: "" }
+                    effectiveTitle ?: ""
                 }
 
                 // Gather episode translations for in-player switching
@@ -272,8 +271,23 @@ fun WatchSelectorScreen(
                 }
 
                 allohaSession.ensureInitialized()
-                // Expose session so the player can trigger translation switches
                 AllohaSessionHolder.session = allohaSession
+                allohaSession.onM3u8Updated = null  // clear stale callback from previous session
+
+                // Populate episode list for in-player next/prev switching
+                val seasonNum2 = state.selectedSeasonNumber
+                val allEpisodes = if (seasonNum2 != null) {
+                    state.tvSeasons?.firstOrNull { it.number == seasonNum2 }?.episodes.orEmpty()
+                } else emptyList()
+                val currentEpIdx = allEpisodes.indexOfFirst { it.number == state.selectedEpisodeNumber }.coerceAtLeast(0)
+                AllohaSessionHolder.episodeIframeUrls = allEpisodes.map { ep ->
+                    ep.voiceovers.firstOrNull { it.title == translationName }?.playbackUrl
+                        ?: ep.voiceovers.firstOrNull()?.playbackUrl ?: ""
+                }
+                AllohaSessionHolder.episodeNames = allEpisodes.map { ep ->
+                    "S%02dE%02d".format(seasonNum2 ?: 1, ep.number)
+                }
+                AllohaSessionHolder.currentEpisodeIndex = currentEpIdx
 
                 allohaSession.onStreamReady = { _, m3u8Url ->
                     allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)

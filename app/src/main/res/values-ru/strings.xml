@@ -228,6 +228,7 @@
     <string name="none">Нет</string>
 
     <string name="player_trickplay">Превью при перемотке</string>
+    <string name="player_skip">Пропустить ⏭</string>
     <string name="player_controls_skip_intro">Пропустить интро</string>
     <string name="player_controls_skip_outro">Пропустить аутро</string>
     <string name="player_controls_skip_recap">Пропустить recap</string>

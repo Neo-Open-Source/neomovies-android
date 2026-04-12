@@ -228,6 +228,7 @@
     <string name="none">None</string>
 
     <string name="player_trickplay">Trickplay preview</string>
+    <string name="player_skip">Skip ⏭</string>
     <string name="player_controls_skip_intro">Skip intro</string>
     <string name="player_controls_skip_outro">Skip outro</string>
     <string name="player_controls_skip_recap">Skip recap</string>

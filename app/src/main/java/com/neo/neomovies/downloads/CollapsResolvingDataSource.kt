@@ -1,6 +1,7 @@
 package com.neo.neomovies.downloads
 
 import android.net.Uri
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
@@ -49,6 +50,7 @@ class CollapsResolvingDataSource(
             ?: throw HttpDataSource.HttpDataSourceException(
                 "Could not resolve Collaps URL for: $id",
                 dataSpec,
+                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
                 HttpDataSource.HttpDataSourceException.TYPE_OPEN,
             )
         delegate = httpFactory.createDataSource()

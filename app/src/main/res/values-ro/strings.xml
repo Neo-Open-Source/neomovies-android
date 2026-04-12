@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoMovies</string>
+
+    <string name="profile_title">Profil</string>
+    <string name="settings_title">Setări</string>
+    <string name="about_title">Despre aplicație</string>
+    <string name="credits_title">Mulțumiri</string>
+
+    <string name="action_login_with_neo_id">Conectare cu Neo ID</string>
+    <string name="action_logout">Deconectare</string>
+
+    <string name="settings_language">Limbă</string>
+    <string name="settings_language_system">Sistem</string>
+    <string name="settings_language_ru">Rusă</string>
+    <string name="settings_language_en">Engleză</string>
+
+    <string name="settings_torrserver">TorrServer</string>
+    <string name="settings_player">Player</string>
+    <string name="settings_player_exoplayer">ExoPlayer</string>
+    <string name="settings_player_mpv">MPV</string>
+    <string name="settings_player_mpv_experimental">MPV (Experimental)</string>
+    <string name="settings_player_vlc">VLC</string>
+    <string name="settings_source">Sursă</string>
+    <string name="settings_source_collaps">Collaps</string>
+    <string name="settings_source_torrents">Torrente</string>
+    <string name="settings_source_alloha">Alloha (Experimental)</string>
+
+    <string name="alloha_parsing_stream">Captare flux…</string>
+    <string name="alloha_error_no_kp">Alloha necesită Kinopoisk ID</string>
+
+    <string name="torrserver_status_label">Status: %1$s</string>
+    <string name="torrserver_status_running">Server pornit</string>
+    <string name="torrserver_status_stopped">Server oprit</string>
+    <string name="torrserver_status_not_downloaded">Fișierul serverului nu a fost găsit</string>
+    <string name="torrserver_installed_version_label">Instalat: %1$s</string>
+    <string name="torrserver_version_label">Versiune (MatriX.xxx)</string>
+    <string name="torrserver_url_label">URL: %1$s</string>
+    <string name="torrserver_download">Descarcă server</string>
+    <string name="torrserver_update">Actualizează server</string>
+    <string name="torrserver_start">Pornește</string>
+    <string name="torrserver_stop">Oprește</string>
+    <string name="torrserver_delete">Șterge server</string>
+    <string name="torrserver_autostart">Pornire automată la lansarea aplicației</string>
+    <string name="torrserver_delete_title">Șterge TorrServer</string>
+    <string name="torrserver_delete_message">TorrServer descărcat și jurnalele vor fi șterse.</string>
+    <string name="torrserver_delete_confirm">Șterge</string>
+    <string name="torrserver_delete_cancel">Anulare</string>
+    <string name="torrserver_required_title">TorrServer necesar</string>
+    <string name="torrserver_required_not_downloaded">Pentru redarea torrentelor trebuie descărcat TorrServer.</string>
+    <string name="torrserver_required_not_running">Pentru redarea torrentelor trebuie pornit TorrServer.</string>
+    <string name="torrserver_required_download_and_start">Descarcă și pornește</string>
+    <string name="torrserver_required_start">Pornește</string>
+    <string name="torrserver_required_cancel">Anulare</string>
+    <string name="torrserver_autostart_prompt_title">Activați pornirea automată?</string>
+    <string name="torrserver_autostart_prompt_message">Pornire automată TorrServer la lansarea aplicației.</string>
+    <string name="torrserver_autostart_prompt_enable">Activează</string>
+    <string name="torrserver_autostart_prompt_not_now">Nu acum</string>
+    <string name="torrserver_notification_title">TorrServer</string>
+    <string name="torrserver_action_stop">Oprește</string>
+    <string name="torrserver_notif_downloading">Descărcare TorrServer…</string>
+    <string name="torrserver_notif_downloaded">TorrServer descărcat</string>
+    <string name="torrserver_notif_download_error">Eroare la descărcarea TorrServer</string>
+    <string name="torrserver_notif_starting">Pornire TorrServer…</string>
+    <string name="torrserver_notif_stopping">Oprire TorrServer…</string>
+    <string name="torrserver_notif_not_downloaded">TorrServer nu este descărcat</string>
+    <string name="torrserver_notif_started">TorrServer pornit</string>
+    <string name="torrserver_notif_start_error">Eroare la pornire: %1$s</string>
+    <string name="torrserver_notif_start_failed">Eroare la pornirea TorrServer</string>
+    <string name="torrserver_logs_title">Jurnale</string>
+    <string name="torrserver_logs_refresh">Actualizează</string>
+    <string name="torrserver_logs_empty">Nu există jurnale</string>
+    <string name="torrserver_app_logs_title">Jurnale aplicație</string>
+    <string name="torrserver_app_logs_empty">Nu există jurnale ale aplicației</string>
+
+    <string name="torrents_not_found">Torrentele nu au fost găsite</string>
+    <string name="select_file">Selectează fișier</string>
+    <string name="torrent_quality_unknown">TOR</string>
+    <string name="torrent_seeds_format">%1$s • %2$d seederi</string>
+
+    <string name="about_latest_release">Ultima versiune</string>
+    <string name="about_latest_release_desc">Depozitul aplicației</string>
+    <string name="about_prereleases">Pre-lansări</string>
+    <string name="about_prereleases_desc">Toate versiunile pre-lansare</string>
+    <string name="about_telegram_channel">Canal Telegram</string>
+    <string name="about_telegram_channel_desc">Noutăți despre aplicație</string>
+    <string name="about_credits">Mulțumiri</string>
+    <string name="about_credits_desc">Mulțumim susținătorilor noștri</string>
+    <string name="about_changes">Modificări</string>
+    <string name="about_changes_desc">Ce este nou în această versiune</string>
+    <string name="about_settings">Setări</string>
+    <string name="about_settings_desc">Parametrii aplicației</string>
+    <string name="about_version">Versiune</string>
+
+    <string name="changes_title">Modificări</string>
+    <string name="changes_version_label">Versiune: %1$s</string>
+
+    <string name="credits_loading">Se încarcă…</string>
+    <string name="credits_offline_cache">Cache offline</string>
+    <string name="credits_section_libraries">Biblioteci și open-source</string>
+    <string name="credits_section_thanks">Mulțumiri</string>
+    <string name="credits_section_supporters">Susținători</string>
+
+    <string name="nav_back">Înapoi</string>
+    <string name="tab_home">Acasă</string>
+    <string name="tab_downloads">Descărcări</string>
+    <string name="downloads_channel_name">Descărcări</string>
+    <string name="download_series">Descarcă serial</string>
+    <string name="download_series_quality">Descarcă serial (calitate)</string>
+    <string name="download_season">Descarcă sezon</string>
+    <string name="download_season_quality">Descarcă sezon (calitate)</string>
+    <string name="download_movie">Descarcă film</string>
+    <string name="download_movie_quality">Descarcă film (calitate)</string>
+    <string name="downloads_active">Active</string>
+    <string name="downloads_movies">Filme</string>
+    <string name="downloads_series">Seriale</string>
+    <string name="downloads_empty">Nu există descărcări</string>
+    <string name="nav_downloads">Descărcări</string>
+    <string name="download_pause">Pauză</string>
+    <string name="download_resume">Continuă</string>
+    <string name="download_remove">Șterge</string>
+    <string name="download_delete_season">Șterge sezon</string>
+    <string name="download_delete_series">Șterge serial</string>
+    <string name="download_play">Vizionează</string>
+    <string name="select_all">Selectează tot</string>
+    <string name="download_selected">Descarcă selectate</string>
+    <string name="download_not_enough_space_title">Spațiu insuficient</string>
+    <string name="download_not_enough_space_message">Spațiu liber insuficient pentru descărcarea fișierelor selectate.</string>
+    <string name="common_ok">OK</string>
+    <string name="offline_search_unavailable">Căutarea nu este disponibilă fără rețea.</string>
+    <string name="offline_categories_unavailable">Categoriile nu sunt disponibile fără rețea.</string>
+    <string name="download_quality_unavailable">Lista de calitate nu este disponibilă.</string>
+    <string name="loading">Se încarcă…</string>
+    <string name="offline_details_unavailable">Nu există date offline pentru acest element.</string>
+    <string name="tab_favorites">Favorite</string>
+    <string name="favorites_auth_required">Pentru a folosi favoritele, trebuie să vă conectați.</string>
+    <string name="favorites_go_to_profile">Mergi la profil</string>
+    <string name="favorites_empty">Nu există favorite</string>
+    <string name="favorites_add">Adaugă la favorite</string>
+    <string name="favorites_remove">Elimină din favorite</string>
+
+    <string name="home_title">NeoMovies</string>
+    <string name="home_section_popular">Popular</string>
+    <string name="home_section_top_movies">Top filme</string>
+    <string name="home_section_top_tv">Top seriale</string>
+    <string name="action_search">Căutare</string>
+    <string name="action_more">Mai mult</string>
+    <string name="action_watch">Vizionează</string>
+    <string name="action_selected">✓</string>
+
+    <string name="lumex_select_season">Sezon</string>
+    <string name="lumex_select_episode">Episod</string>
+    <string name="lumex_select_voiceover">Dublaj</string>
+    <string name="lumex_select_quality">Calitate</string>
+    <string name="lumex_no_data">Nu există surse disponibile</string>
+
+    <string name="common_error">Eroare</string>
+    <string name="action_retry">Reîncearcă</string>
+
+    <string name="search_title">Căutare</string>
+    <string name="search_hint">Introduceți titlul</string>
+    <string name="search_start_typing">Începeți să tastați</string>
+    <string name="search_nothing_found">Nu s-a găsit nimic</string>
+    <string name="search_history_remove">Elimină din istoric</string>
+
+    <string name="pagination_prev">Înapoi</string>
+    <string name="pagination_next">Înainte</string>
+
+    <string name="details_back">Înapoi</string>
+    <string name="common_separator_dot"> • </string>
+    <string name="details_duration_minutes">%1$d min</string>
+    <string name="details_rating_format">★ %1$.1f</string>
+
+    <string name="player_title">Player</string>
+    <string name="player_video_placeholder">Video va fi aici</string>
+    <string name="player_play">Redă</string>
+    <string name="player_pause">Pauză</string>
+    <string name="player_rewind_10">Înapoi 10 secunde</string>
+    <string name="player_forward_10">Înainte 10 secunde</string>
+    <string name="player_captions">Subtitrări</string>
+    <string name="player_settings">Setări</string>
+    <string name="player_fullscreen">Ecran complet</string>
+    <string name="player_time_format">%1$02d:%2$02d</string>
+    <string name="player_debug_source_id">Sursă: %1$s</string>
+    <string name="player_controls_exit">Ieșire</string>
+    <string name="player_controls_lock">Blochează comenzile</string>
+    <string name="player_controls_play_pause">Redare / Pauză</string>
+    <string name="player_controls_rewind">Derulare înapoi</string>
+    <string name="player_controls_fast_forward">Derulare înainte</string>
+    <string name="player_controls_skip_back">Înapoi</string>
+    <string name="player_controls_skip_forward">Înainte</string>
+    <string name="player_controls_progress">Derulare</string>
+    <string name="player_controls_pip">Imagine în imagine</string>
+    <string name="player_controls_aspect_ratio">Raport de aspect</string>
+    <string name="player_trickplay">Previzualizare la derulare</string>
+    <string name="player_skip">Sari ⏭</string>
+    <string name="player_controls_skip_intro">Sari intro</string>
+    <string name="player_controls_skip_outro">Sari outro</string>
+    <string name="player_controls_skip_recap">Sari recap</string>
+    <string name="player_controls_skip_commercial">Sari reclama</string>
+    <string name="player_controls_skip_preview">Sari previzualizare</string>
+    <string name="player_controls_skip_unknown">Sari</string>
+    <string name="player_controls_next_episode">Episodul următor</string>
+
+    <string name="episode_watched">Vizionat</string>
+    <string name="episode_progress">%1$d%%</string>
+    <string name="details_watched_count">Episoade vizionate: %1$d</string>
+    <string name="details_last_watched">Oprit la: S%1$02dE%2$02d%3$s</string>
+    <string name="details_watch_progress_minutes">Oprit la: %1$d/%2$d min%3$s</string>
+    <string name="details_watch_progress_position">Oprit la: %1$d min</string>
+
+    <string name="picture_in_picture">Imagine în imagine</string>
+    <string name="select_playback_speed">Viteza de redare</string>
+    <string name="select_audio_track">Selectare pistă audio</string>
+    <string name="select_subtitle_track">Selectare subtitrări</string>
+    <string name="select_video_quality">Selectare calitate</string>
+    <string name="none">Niciunul</string>
+
+    <string name="category_popular">Popular</string>
+    <string name="category_top_movies">Top filme</string>
+    <string name="category_top_tv">Top seriale</string>
+
+    <string name="download_progress_details">Descărcare: %1$d%% %2$s</string>
+    <string name="downloaded_label">Descărcat</string>
+    <string name="download_in_progress">Descărcare %1$d%%</string>
+    <string name="download_complete">Descărcat</string>
+</resources>

@@ -400,7 +400,7 @@ class WatchSelectorViewModel(
         val season = _state.value.tvSeasons?.firstOrNull { it.number == seasonNumber } ?: return
         val episode = season.episodes.firstOrNull { it.number == episodeNumber } ?: return
 
-        // For Alloha: try to match saved translation; show picker if multiple and no match
+        // For Alloha: try to match saved translation; auto-select first if no match
         if (SourceManager.getMode(context) == SourceMode.ALLOHA) {
             val savedName = _state.value.allohaTranslationName
                 ?: allohaTranslationPrefs.getString("last_translation_name", null)
@@ -408,21 +408,7 @@ class WatchSelectorViewModel(
                 episode.voiceovers.firstOrNull { it.title == savedName }
             } else null
 
-            if (matched != null) {
-                selectAllohaVoiceover(matched)
-                return
-            }
-            if (episode.voiceovers.size == 1) {
-                selectAllohaVoiceover(episode.voiceovers.first())
-                return
-            }
-            // Multiple translations, no saved preference -- show picker
-            _state.update {
-                it.copy(
-                    showAllohaTranslationPicker = true,
-                    allohaEpisodeVoiceovers = episode.voiceovers,
-                )
-            }
+            selectAllohaVoiceover(matched ?: episode.voiceovers.firstOrNull() ?: return)
             return
         }
 

@@ -83,6 +83,21 @@ fun LanguageScreen(
                 selected = mode == LanguageMode.EN,
                 onSelect = { select(LanguageMode.EN) },
             )
+            LanguageRow(
+                title = "Українська",
+                selected = mode == LanguageMode.UK,
+                onSelect = { select(LanguageMode.UK) },
+            )
+            LanguageRow(
+                title = "Беларуская",
+                selected = mode == LanguageMode.BE,
+                onSelect = { select(LanguageMode.BE) },
+            )
+            LanguageRow(
+                title = "Română",
+                selected = mode == LanguageMode.RO,
+                onSelect = { select(LanguageMode.RO) },
+            )
         }
     }
 }

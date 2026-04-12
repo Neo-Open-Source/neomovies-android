@@ -8,15 +8,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
-import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -25,6 +26,8 @@ import androidx.compose.ui.res.stringResource
 import com.neo.neomovies.BuildConfig
 import com.neo.neomovies.R
 import com.neo.neomovies.ui.components.PreferenceItem
+import com.neo.neomovies.update.UpdateChecker
+import kotlinx.coroutines.launch
 
 private const val telegramChannelUrl = "https://t.me/neomovies_news"
 private const val latestReleaseUrl = "https://github.com/Neo-Open-Source/neomovies-android/releases/latest"
@@ -40,10 +43,19 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     val versionName = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
     }.getOrNull() ?: ""
+
+    var updateInfo by remember { mutableStateOf<com.neo.neomovies.update.ReleaseInfo?>(null) }
+    var updateChecked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        updateInfo = UpdateChecker.checkForUpdate(context)
+        updateChecked = true
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -59,6 +71,17 @@ fun AboutScreen(
         },
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding)) {
+            if (updateChecked && updateInfo != null) {
+                item {
+                    val info = updateInfo!!
+                    PreferenceItem(
+                        title = "Доступно обновление ${info.tagName}",
+                        description = if (info.apkUrl != null) "Нажмите для скачивания APK" else "Нажмите для открытия страницы",
+                        icon = Icons.Outlined.SystemUpdate,
+                    ) { uriHandler.openUri(info.apkUrl ?: info.htmlUrl) }
+                }
+            }
+
             item {
                 PreferenceItem(
                     title = stringResource(R.string.about_latest_release),
@@ -97,7 +120,7 @@ fun AboutScreen(
                 PreferenceItem(
                     title = stringResource(R.string.about_changes),
                     description = stringResource(R.string.about_changes_desc),
-                    icon = Icons.Outlined.ReceiptLong,
+                    icon = Icons.AutoMirrored.Outlined.ReceiptLong,
                 ) { onOpenChanges() }
             }
 

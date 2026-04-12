@@ -171,7 +171,7 @@ class NeoIdAuthManager(
 
                     val respBody = response.body?.string() ?: return@use
                     val obj = JSONObject(respBody)
-                    val rawLoginUrl = obj.optString("login_url", null) ?: return@use
+                    val rawLoginUrl = obj.optString("login_url").takeIf { it.isNotBlank() } ?: return@use
 
                     val base = BuildConfig.NEO_ID_BASE_URL.trimEnd('/')
                     val loginUrl = if (rawLoginUrl.startsWith("/")) {

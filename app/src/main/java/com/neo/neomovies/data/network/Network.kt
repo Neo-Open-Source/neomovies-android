@@ -7,6 +7,7 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -151,7 +152,7 @@ fun createOkHttpClient(): OkHttpClient {
                         .protocol(okhttp3.Protocol.HTTP_1_1)
                         .code(503)
                         .message("Offline - no cache")
-                        .body(okhttp3.ResponseBody.create(null, ByteArray(0)))
+                        .body(ByteArray(0).toResponseBody(null))
                         .build()
                 }
                 return@addInterceptor response

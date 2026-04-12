@@ -2,6 +2,7 @@ package com.neo.neomovies.data.alloha
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -73,11 +74,13 @@ class AllohaRepository(
 
         val client = buildTrustingClient()
         val request = Request.Builder().url(apiUrl).build()
-        val jsonStr = client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw RuntimeException("Alloha API returned ${response.code}")
+        val jsonStr = retry(times = 3, delayMs = 1000L) {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw RuntimeException("Alloha API returned ${response.code}")
+                }
+                response.body?.string() ?: throw RuntimeException("Empty response body")
             }
-            response.body?.string() ?: throw RuntimeException("Empty response body")
         }
 
         val dataObj = JSONObject(jsonStr).getJSONObject("data")
@@ -160,4 +163,15 @@ class AllohaRepository(
             )
         }
     }
+}
+
+private suspend fun <T> retry(times: Int, delayMs: Long, block: suspend () -> T): T {
+    var lastError: Throwable? = null
+    repeat(times) { attempt ->
+        try { return block() } catch (e: Throwable) {
+            lastError = e
+            if (attempt < times - 1) delay(delayMs)
+        }
+    }
+    throw lastError!!
 }

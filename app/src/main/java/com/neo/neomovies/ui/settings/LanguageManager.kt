@@ -14,6 +14,9 @@ enum class LanguageMode(val value: String) {
     SYSTEM("system"),
     RU("ru"),
     EN("en"),
+    UK("uk"),
+    BE("be"),
+    RO("ro"),
     ;
 
     companion object {
@@ -45,6 +48,9 @@ object LanguageManager {
         val tag = when (mode) {
             LanguageMode.RU -> "ru"
             LanguageMode.EN -> "en"
+            LanguageMode.UK -> "uk"
+            LanguageMode.BE -> "be"
+            LanguageMode.RO -> "ro"
             LanguageMode.SYSTEM -> ""
         }
 
@@ -58,6 +64,9 @@ object LanguageManager {
         val locale = when (mode) {
             LanguageMode.RU -> Locale.forLanguageTag("ru")
             LanguageMode.EN -> Locale.forLanguageTag("en")
+            LanguageMode.UK -> Locale.forLanguageTag("uk")
+            LanguageMode.BE -> Locale.forLanguageTag("be")
+            LanguageMode.RO -> Locale.forLanguageTag("ro")
             LanguageMode.SYSTEM -> Locale.getDefault()
         }
 

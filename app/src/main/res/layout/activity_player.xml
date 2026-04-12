@@ -187,4 +187,14 @@
         android:alpha="0"
         android:src="@drawable/transparent_circle"
         tools:ignore="ContentDescription" />
+
+    <Button
+        android:id="@+id/btn_skip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="96dp"
+        android:text="@string/player_skip"
+        android:visibility="gone" />
 </FrameLayout>

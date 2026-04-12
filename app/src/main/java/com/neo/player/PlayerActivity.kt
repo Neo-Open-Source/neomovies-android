@@ -163,16 +163,30 @@ class PlayerActivity : BasePlayerActivity() {
             finishPlayback()
         }
 
-        val videoNameTextView = binding.playerView.findViewById<TextView>(R.id.video_name)
+        val useCollapsHeaders = intent.getBooleanExtra(EXTRA_USE_COLLAPS_HEADERS, false)
+        val isAllohaSource = intent.getBooleanExtra(EXTRA_IS_ALLOHA, false)
 
+        // For Alloha: wrap player so exo_prev/exo_next switch episodes natively via ForwardingPlayer
+        if (isAllohaSource) {
+            val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(viewModel.player) {
+                override fun hasPreviousMediaItem() =
+                    com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex > 0
+                override fun hasNextMediaItem() =
+                    com.neo.neomovies.data.alloha.AllohaSessionHolder.currentEpisodeIndex <
+                        com.neo.neomovies.data.alloha.AllohaSessionHolder.episodeIframeUrls.size - 1
+                override fun seekToPreviousMediaItem() { switchAllohaEpisode(-1) }
+                override fun seekToNextMediaItem() { switchAllohaEpisode(+1) }
+            }
+            binding.playerView.player = forwardingPlayer
+        }
+
+        val videoNameTextView = binding.playerView.findViewById<TextView>(R.id.video_name)
         val audioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_audio_track)
         val subtitleButton = binding.playerView.findViewById<ImageButton>(R.id.btn_subtitle)
         val speedButton = binding.playerView.findViewById<ImageButton>(R.id.btn_speed)
         val qualityButton = binding.playerView.findViewById<ImageButton>(R.id.btn_quality)
         val aspectRatioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_aspect_ratio)
 
-        val useCollapsHeaders = intent.getBooleanExtra(EXTRA_USE_COLLAPS_HEADERS, false)
-        val isAllohaSource = intent.getBooleanExtra(EXTRA_IS_ALLOHA, false)
         // Quality selection: available for both Collaps (DASH/HLS) and Alloha (HLS proxy)
         qualityButton.isVisible = useCollapsHeaders || isAllohaSource
 
@@ -328,6 +342,26 @@ class PlayerActivity : BasePlayerActivity() {
                     while (true) {
                         viewModel.updatePlaybackProgress()
                         delay(5000L)
+                    }
+                }
+
+                // Skip button: show when position is within a skipTime range
+                if (isAllohaSource) {
+                    launch {
+                        val skipBtn = binding.btnSkip
+                        skipBtn.setOnClickListener {
+                            val ranges = com.neo.neomovies.data.alloha.AllohaSessionHolder.skipRanges
+                            val pos = viewModel.player.currentPosition
+                            val range = ranges.firstOrNull { pos in it } ?: return@setOnClickListener
+                            viewModel.player.seekTo(range.last)
+                        }
+                        while (true) {
+                            val ranges = com.neo.neomovies.data.alloha.AllohaSessionHolder.skipRanges
+                            val pos = viewModel.player.currentPosition
+                            val inRange = ranges.any { pos in it }
+                            skipBtn.visibility = if (inRange) View.VISIBLE else View.GONE
+                            delay(500L)
+                        }
                     }
                 }
             }
@@ -519,6 +553,37 @@ class PlayerActivity : BasePlayerActivity() {
         if (isInPictureInPictureMode) {
             binding.playerView.hideController()
         }
+    }
+
+    private fun switchAllohaEpisode(delta: Int) {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val newIdx = holder.currentEpisodeIndex + delta
+        if (newIdx < 0 || newIdx >= holder.episodeIframeUrls.size) return
+        val iframeUrl = holder.episodeIframeUrls[newIdx].takeIf { it.isNotBlank() } ?: return
+        val session = holder.session ?: return
+
+        holder.currentEpisodeIndex = newIdx
+        val episodeName = holder.episodeNames.getOrNull(newIdx) ?: ""
+
+        val videoNameTextView = binding.playerView.findViewById<android.widget.TextView>(R.id.video_name)
+        videoNameTextView.text = getString(com.neo.neomovies.R.string.alloha_parsing_stream)
+
+        session.onStreamReady = { _, _ -> }
+        session.onM3u8Updated = { _ ->
+            runOnUiThread {
+                videoNameTextView.text = episodeName
+                viewModel.resetAudioOverride()
+                viewModel.player.stop()
+                viewModel.player.prepare()
+                viewModel.player.playWhenReady = true
+            }
+        }
+        session.onError = { error ->
+            runOnUiThread {
+                android.widget.Toast.makeText(this, "Error: $error", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        session.startSession(iframeUrl)
     }
 
     private fun showAllohaQualityPicker() {

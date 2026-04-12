@@ -1,7 +1,13 @@
 package com.neo.neomovies.data.alloha
 
 import android.content.Context
+import android.media.MediaCodecList
+import android.media.MediaFormat
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
+import com.neo.neomovies.alloha.AllohaParser
+import com.neo.neomovies.alloha.HlsProxyServer
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.URL
@@ -110,8 +116,11 @@ class AllohaSessionManager(private val context: Context) {
 
                     val qualitiesMap = mutableMapOf<String, String>()
                     fallbackM3u8Url = ""
-                    for (i in 0 until hlsSource.length()) {
-                        val qualityObj = hlsSource.getJSONObject(i).optJSONObject("quality") ?: continue
+                    // Only use the first hlsSource entry — it corresponds to the selected translation.
+                    // Iterating all entries overwrites qualitiesMap with the last (often English) entry.
+                    val firstSource = hlsSource.optJSONObject(0)
+                    val qualityObj = firstSource?.optJSONObject("quality")
+                    if (qualityObj != null) {
                         qualityObj.keys().forEach { q ->
                             val parts = qualityObj.optString(q, "").split(" or ")
                             val link = parts[0].trim()
@@ -129,17 +138,45 @@ class AllohaSessionManager(private val context: Context) {
                     activeHeaders.clear()
                     activeHeaders.putAll(extraHeaders)
 
-                    // Store all qualities for the player's quality picker
+                    // Parse subtitle tracks from bnsi JSON (field: "tracks")
+                    val subtitles = mutableListOf<Triple<String, String, String>>()
+                    val tracksArray = jsonObj.optJSONArray("tracks")
+                    if (tracksArray != null) {
+                        for (i in 0 until tracksArray.length()) {
+                            val track = tracksArray.optJSONObject(i) ?: continue
+                            if (track.optString("kind") != "captions") continue
+                            val url = track.optString("src", "")
+                            val lang = track.optString("language", "und")
+                            val name = track.optString("label", lang)
+                            if (url.isNotBlank()) {
+                                subtitles.add(Triple(lang, name, if (url.startsWith("//")) "https:$url" else url))
+                            }
+                        }
+                    }
+                    Log.d(TAG, "Parsed ${subtitles.size} subtitle tracks")
+                    hlsProxy?.subtitleTracks = subtitles
+
+                    // Parse skip times (e.g. "436-539,3628-3700")
+                    val skipTimeStr = jsonObj.optString("skipTime", "")
+                    Log.d(TAG, "skipTime: '$skipTimeStr'")
+                    AllohaSessionHolder.skipRanges = parseSkipRanges(skipTimeStr)
+
                     lastQualityMap = qualitiesMap.toMap()
 
-                    // Pick best quality as default m3u8
-                    val bestKey = listOf("1080", "720", "1440", "2160", "480", "360")
-                        .firstOrNull { qualitiesMap.containsKey(it) }
-                    val bestUrl = bestKey?.let { qualitiesMap[it] } ?: qualitiesMap.values.first()
-                    currentM3u8Url = bestUrl
-                    lastSelectedQuality = bestKey ?: ""
-
-                    onStreamReady?.invoke(json, bestUrl)
+                    if (!isRestart) {
+                        // Prefer previously selected quality (persists across episodes in same session)
+                        val savedKey = AllohaSessionHolder.currentQuality
+                        val bestKey = if (savedKey.isNotBlank() && qualitiesMap.containsKey(savedKey)) {
+                            savedKey
+                        } else {
+                            pickBestQuality(context, qualitiesMap)
+                        }
+                        val bestUrl = qualitiesMap[bestKey] ?: qualitiesMap.values.first()
+                        currentM3u8Url = bestUrl
+                        lastSelectedQuality = bestKey
+                        onStreamReady?.invoke(json, bestUrl)
+                    }
+                    // For restarts: wait for onM3u8Refreshed to get the fresh signed URL
                 } catch (e: Exception) {
                     Log.e(TAG, "onHlsLinksReceived error: ${e.message}")
                     onError?.invoke("Parse error: ${e.message}")
@@ -150,7 +187,6 @@ class AllohaSessionManager(private val context: Context) {
                 activeHeaders.putAll(extraHeaders)
                 Log.d(TAG, "config_update: edge_hash=$edgeHash TTL=${ttlSeconds}s")
 
-                // Schedule proactive session restart before TTL expires
                 val ttlMs = ttlSeconds * 1000L
                 proactiveRestartJob?.cancel()
                 proactiveRestartJob = scope.launch {
@@ -164,8 +200,7 @@ class AllohaSessionManager(private val context: Context) {
 
                 if (!configUpdateReceived) {
                     configUpdateReceived = true
-                    // Update proxy with the current CDN URL now that auth is valid
-                    if (currentM3u8Url.isNotBlank()) {
+                    if (!isRestart && currentM3u8Url.isNotBlank()) {
                         hlsProxy?.updateMasterUrl(currentM3u8Url)
                         onM3u8Updated?.invoke(currentM3u8Url)
                     }
@@ -184,6 +219,10 @@ class AllohaSessionManager(private val context: Context) {
                     if (hostChanged) {
                         configUpdateReceived = false
                         Log.d(TAG, "CDN host changed $prevHost -> $newHost, waiting for config_update")
+                    } else if (isRestart) {
+                        // Proactive restart: update URL silently — no cache reset, player keeps playing
+                        hlsProxy?.updateMasterUrlSilently(url)
+                        Log.d(TAG, "Proactive restart: CDN URL updated silently")
                     } else {
                         hlsProxy?.updateMasterUrl(url)
                         onM3u8Updated?.invoke(url)
@@ -210,5 +249,41 @@ class AllohaSessionManager(private val context: Context) {
         parser?.release()
         parser = null
         activeHeaders.clear()
+    }
+
+    private fun pickBestQuality(context: Context, qualities: Map<String, String>): String {
+        val supportsAv1 = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.any { info ->
+            !info.isEncoder && info.supportedTypes.any { it.equals(MediaFormat.MIMETYPE_VIDEO_AV1, ignoreCase = true) }
+        }
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+        val isWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        val downMbps = caps?.linkDownstreamBandwidthKbps?.div(1000) ?: 0
+
+        // Auto quality caps at 1080p — higher resolutions (2K/4K) require AV1 and manual selection.
+        // AV1 constraint: if not supported, 1080p is the ceiling regardless of bandwidth.
+        val maxRes = when {
+            !supportsAv1 -> 1080
+            isWifi || downMbps >= 10 -> 1080
+            downMbps >= 5 -> 720
+            else -> 480
+        }
+
+        val ordered = listOf("1080", "720", "480", "360")
+            .filter { (it.toIntOrNull() ?: 0) <= maxRes }
+        return ordered.firstOrNull { qualities.containsKey(it) }
+            ?: listOf("1080", "720", "480", "360", "1440", "2160")
+                .firstOrNull { qualities.containsKey(it) }
+            ?: qualities.keys.first()
+    }
+
+    private fun parseSkipRanges(skipTime: String): List<LongRange> {
+        if (skipTime.isBlank()) return emptyList()
+        return skipTime.split(",").mapNotNull { part ->
+            val (s, e) = part.trim().split("-").takeIf { it.size == 2 } ?: return@mapNotNull null
+            val start = s.toLongOrNull() ?: return@mapNotNull null
+            val end = e.toLongOrNull() ?: return@mapNotNull null
+            (start * 1000)..(end * 1000)
+        }
     }
 }

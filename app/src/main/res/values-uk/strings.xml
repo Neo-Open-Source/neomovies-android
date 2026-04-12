@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeoMovies</string>
+
+    <string name="profile_title">Профіль</string>
+    <string name="settings_title">Налаштування</string>
+    <string name="about_title">Про застосунок</string>
+    <string name="credits_title">Подяки</string>
+
+    <string name="action_login_with_neo_id">Увійти через Neo ID</string>
+    <string name="action_logout">Вийти</string>
+
+    <string name="settings_language">Мова</string>
+    <string name="settings_language_system">Системна</string>
+    <string name="settings_language_ru">Російська</string>
+    <string name="settings_language_en">Англійська</string>
+
+    <string name="settings_torrserver">TorrServer</string>
+    <string name="settings_player">Плеєр</string>
+    <string name="settings_player_exoplayer">ExoPlayer</string>
+    <string name="settings_player_mpv">MPV</string>
+    <string name="settings_player_mpv_experimental">MPV (Експериментально)</string>
+    <string name="settings_player_vlc">VLC</string>
+    <string name="settings_source">Джерело</string>
+    <string name="settings_source_collaps">Collaps</string>
+    <string name="settings_source_torrents">Торенти</string>
+    <string name="settings_source_alloha">Alloha (Експериментально)</string>
+
+    <string name="alloha_parsing_stream">Захоплення потоку…</string>
+    <string name="alloha_error_no_kp">Для Alloha потрібен Kinopoisk ID</string>
+
+    <string name="torrserver_status_label">Статус: %1$s</string>
+    <string name="torrserver_status_running">Сервер запущено</string>
+    <string name="torrserver_status_stopped">Сервер зупинено</string>
+    <string name="torrserver_status_not_downloaded">Файл сервера не знайдено</string>
+    <string name="torrserver_installed_version_label">Встановлено: %1$s</string>
+    <string name="torrserver_version_label">Версія (MatriX.xxx)</string>
+    <string name="torrserver_url_label">URL: %1$s</string>
+    <string name="torrserver_download">Завантажити сервер</string>
+    <string name="torrserver_update">Оновити сервер</string>
+    <string name="torrserver_start">Запустити</string>
+    <string name="torrserver_stop">Зупинити</string>
+    <string name="torrserver_delete">Видалити сервер</string>
+    <string name="torrserver_autostart">Запускати при старті застосунку</string>
+    <string name="torrserver_delete_title">Видалити TorrServer</string>
+    <string name="torrserver_delete_message">Буде видалено завантажений TorrServer та логи.</string>
+    <string name="torrserver_delete_confirm">Видалити</string>
+    <string name="torrserver_delete_cancel">Скасувати</string>
+    <string name="torrserver_required_title">Потрібен TorrServer</string>
+    <string name="torrserver_required_not_downloaded">Для відтворення торентів потрібно завантажити TorrServer.</string>
+    <string name="torrserver_required_not_running">Для відтворення торентів потрібно запустити TorrServer.</string>
+    <string name="torrserver_required_download_and_start">Завантажити та запустити</string>
+    <string name="torrserver_required_start">Запустити</string>
+    <string name="torrserver_required_cancel">Скасувати</string>
+    <string name="torrserver_autostart_prompt_title">Увімкнути автозапуск?</string>
+    <string name="torrserver_autostart_prompt_message">Запускати TorrServer автоматично при старті застосунку.</string>
+    <string name="torrserver_autostart_prompt_enable">Увімкнути</string>
+    <string name="torrserver_autostart_prompt_not_now">Не зараз</string>
+    <string name="torrserver_notification_title">TorrServer</string>
+    <string name="torrserver_action_stop">Зупинити</string>
+    <string name="torrserver_notif_downloading">Завантаження TorrServer…</string>
+    <string name="torrserver_notif_downloaded">TorrServer завантажено</string>
+    <string name="torrserver_notif_download_error">Помилка завантаження TorrServer</string>
+    <string name="torrserver_notif_starting">Запуск TorrServer…</string>
+    <string name="torrserver_notif_stopping">Зупинка TorrServer…</string>
+    <string name="torrserver_notif_not_downloaded">TorrServer не завантажено</string>
+    <string name="torrserver_notif_started">TorrServer запущено</string>
+    <string name="torrserver_notif_start_error">Помилка запуску: %1$s</string>
+    <string name="torrserver_notif_start_failed">Помилка запуску TorrServer</string>
+    <string name="torrserver_logs_title">Логи</string>
+    <string name="torrserver_logs_refresh">Оновити</string>
+    <string name="torrserver_logs_empty">Логів поки немає</string>
+    <string name="torrserver_app_logs_title">Логи застосунку</string>
+    <string name="torrserver_app_logs_empty">Логів застосунку поки немає</string>
+
+    <string name="torrents_not_found">Торенти не знайдено</string>
+    <string name="select_file">Вибрати файл</string>
+    <string name="torrent_quality_unknown">TOR</string>
+    <string name="torrent_seeds_format">%1$s • %2$d сидів</string>
+
+    <string name="about_latest_release">Останній реліз</string>
+    <string name="about_latest_release_desc">Репозиторій застосунку</string>
+    <string name="about_prereleases">Пре-релізи</string>
+    <string name="about_prereleases_desc">Усі пре-реліз збірки</string>
+    <string name="about_telegram_channel">Telegram канал</string>
+    <string name="about_telegram_channel_desc">Новини про застосунок</string>
+    <string name="about_credits">Подяки</string>
+    <string name="about_credits_desc">Дякуємо нашим прихильникам</string>
+    <string name="about_changes">Зміни</string>
+    <string name="about_changes_desc">Що нового в цій версії</string>
+    <string name="about_settings">Налаштування</string>
+    <string name="about_settings_desc">Параметри застосунку</string>
+    <string name="about_version">Версія</string>
+
+    <string name="changes_title">Зміни</string>
+    <string name="changes_version_label">Версія: %1$s</string>
+
+    <string name="credits_loading">Завантаження…</string>
+    <string name="credits_offline_cache">Офлайн кеш</string>
+    <string name="credits_section_libraries">Бібліотеки та open-source</string>
+    <string name="credits_section_thanks">Подяки</string>
+    <string name="credits_section_supporters">Прихильники</string>
+
+    <string name="nav_back">Назад</string>
+    <string name="tab_home">Головна</string>
+    <string name="tab_downloads">Завантаження</string>
+    <string name="downloads_channel_name">Завантаження</string>
+    <string name="download_series">Завантажити серіал</string>
+    <string name="download_series_quality">Завантажити серіал (якість)</string>
+    <string name="download_season">Завантажити сезон</string>
+    <string name="download_season_quality">Завантажити сезон (якість)</string>
+    <string name="download_movie">Завантажити фільм</string>
+    <string name="download_movie_quality">Завантажити фільм (якість)</string>
+    <string name="downloads_active">Активні</string>
+    <string name="downloads_movies">Фільми</string>
+    <string name="downloads_series">Серіали</string>
+    <string name="downloads_empty">Немає завантажень</string>
+    <string name="nav_downloads">Завантаження</string>
+    <string name="download_pause">Пауза</string>
+    <string name="download_resume">Продовжити</string>
+    <string name="download_remove">Видалити</string>
+    <string name="download_delete_season">Видалити сезон</string>
+    <string name="download_delete_series">Видалити серіал</string>
+    <string name="download_play">Дивитися</string>
+    <string name="select_all">Вибрати всі</string>
+    <string name="download_selected">Завантажити вибрані</string>
+    <string name="download_not_enough_space_title">Недостатньо місця</string>
+    <string name="download_not_enough_space_message">Недостатньо вільного місця для завантаження вибраних файлів.</string>
+    <string name="common_ok">ОК</string>
+    <string name="offline_search_unavailable">Пошук недоступний без мережі.</string>
+    <string name="offline_categories_unavailable">Категорії недоступні без мережі.</string>
+    <string name="download_quality_unavailable">Список якості недоступний.</string>
+    <string name="loading">Завантаження…</string>
+    <string name="offline_details_unavailable">Немає офлайн-даних для цього елемента.</string>
+    <string name="tab_favorites">Обране</string>
+    <string name="favorites_auth_required">Щоб користуватися обраним, потрібно увійти.</string>
+    <string name="favorites_go_to_profile">Перейти до профілю</string>
+    <string name="favorites_empty">Поки немає обраного</string>
+    <string name="favorites_add">Додати до обраного</string>
+    <string name="favorites_remove">Прибрати з обраного</string>
+
+    <string name="home_title">NeoMovies</string>
+    <string name="home_section_popular">Популярне</string>
+    <string name="home_section_top_movies">Топ фільмів</string>
+    <string name="home_section_top_tv">Топ серіалів</string>
+    <string name="action_search">Пошук</string>
+    <string name="action_more">Більше</string>
+    <string name="action_watch">Дивитися</string>
+    <string name="action_selected">✓</string>
+
+    <string name="lumex_select_season">Сезон</string>
+    <string name="lumex_select_episode">Серія</string>
+    <string name="lumex_select_voiceover">Озвучення</string>
+    <string name="lumex_select_quality">Якість</string>
+    <string name="lumex_no_data">Немає доступних джерел</string>
+
+    <string name="common_error">Помилка</string>
+    <string name="action_retry">Повторити</string>
+
+    <string name="search_title">Пошук</string>
+    <string name="search_hint">Введіть назву</string>
+    <string name="search_start_typing">Почніть вводити запит</string>
+    <string name="search_nothing_found">Нічого не знайдено</string>
+    <string name="search_history_remove">Видалити з історії</string>
+
+    <string name="pagination_prev">Назад</string>
+    <string name="pagination_next">Вперед</string>
+
+    <string name="details_back">Назад</string>
+    <string name="common_separator_dot"> • </string>
+    <string name="details_duration_minutes">%1$d хв</string>
+    <string name="details_rating_format">★ %1$.1f</string>
+
+    <string name="player_title">Плеєр</string>
+    <string name="player_video_placeholder">Тут буде відео</string>
+    <string name="player_play">Відтворити</string>
+    <string name="player_pause">Пауза</string>
+    <string name="player_rewind_10">Назад на 10 секунд</string>
+    <string name="player_forward_10">Вперед на 10 секунд</string>
+    <string name="player_captions">Субтитри</string>
+    <string name="player_settings">Налаштування</string>
+    <string name="player_fullscreen">На весь екран</string>
+    <string name="player_time_format">%1$02d:%2$02d</string>
+    <string name="player_debug_source_id">Джерело: %1$s</string>
+    <string name="player_controls_exit">Вихід</string>
+    <string name="player_controls_lock">Заблокувати керування</string>
+    <string name="player_controls_play_pause">Відтворення / Пауза</string>
+    <string name="player_controls_rewind">Перемотка назад</string>
+    <string name="player_controls_fast_forward">Перемотка вперед</string>
+    <string name="player_controls_skip_back">Назад</string>
+    <string name="player_controls_skip_forward">Вперед</string>
+    <string name="player_controls_progress">Перемотка</string>
+    <string name="player_controls_pip">Картинка в картинці</string>
+    <string name="player_controls_aspect_ratio">Співвідношення сторін</string>
+    <string name="player_trickplay">Превью при перемотці</string>
+    <string name="player_skip">Пропустити ⏭</string>
+    <string name="player_controls_skip_intro">Пропустити інтро</string>
+    <string name="player_controls_skip_outro">Пропустити аутро</string>
+    <string name="player_controls_skip_recap">Пропустити recap</string>
+    <string name="player_controls_skip_commercial">Пропустити рекламу</string>
+    <string name="player_controls_skip_preview">Пропустити превью</string>
+    <string name="player_controls_skip_unknown">Пропустити</string>
+    <string name="player_controls_next_episode">Наступна серія</string>
+
+    <string name="episode_watched">Переглянуто</string>
+    <string name="episode_progress">%1$d%%</string>
+    <string name="details_watched_count">Переглянуто серій: %1$d</string>
+    <string name="details_last_watched">Зупинились: S%1$02dE%2$02d%3$s</string>
+    <string name="details_watch_progress_minutes">Зупинились: %1$d/%2$d хв%3$s</string>
+    <string name="details_watch_progress_position">Зупинились: %1$d хв</string>
+
+    <string name="picture_in_picture">Картинка в картинці</string>
+    <string name="select_playback_speed">Швидкість відтворення</string>
+    <string name="select_audio_track">Вибір аудіодоріжки</string>
+    <string name="select_subtitle_track">Вибір субтитрів</string>
+    <string name="select_video_quality">Вибір якості</string>
+    <string name="none">Немає</string>
+
+    <string name="category_popular">Популярне</string>
+    <string name="category_top_movies">Топ фільмів</string>
+    <string name="category_top_tv">Топ серіалів</string>
+
+    <string name="download_progress_details">Завантаження: %1$d%% %2$s</string>
+    <string name="downloaded_label">Завантажено</string>
+    <string name="download_in_progress">Завантаження %1$d%%</string>
+    <string name="download_complete">Завантажено</string>
+</resources>

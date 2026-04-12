@@ -34,7 +34,7 @@ sealed class NavRoute(val route: String) {
     }
 }
 
-enum class CategoryType(val value: String, @StringRes val titleRes: Int) {
+enum class CategoryType(val value: String, @param:StringRes val titleRes: Int) {
     POPULAR("popular", R.string.category_popular),
     TOP_MOVIES("top_movies", R.string.category_top_movies),
     TOP_TV("top_tv", R.string.category_top_tv),

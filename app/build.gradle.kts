@@ -9,6 +9,31 @@ android {
         version = release(36)
     }
 
+    signingConfigs {
+        // Prerelease signing: use RELEASE_KEYSTORE_* env vars if available, else fall back to debug
+        create("prerelease") {
+            val ksPath = System.getenv("RELEASE_KEYSTORE_PATH")
+            val ksPass = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+            val keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            val keyPass = System.getenv("RELEASE_KEY_PASSWORD")
+            if (ksPath != null && ksPass != null && keyAlias != null && keyPass != null) {
+                storeFile = file(ksPath)
+                storePassword = ksPass
+                this.keyAlias = keyAlias
+                keyPassword = keyPass
+            } else {
+                // Local dev: use debug keystore
+                val debugKs = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                if (debugKs.exists()) {
+                    storeFile = debugKs
+                    storePassword = "android"
+                    this.keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                }
+            }
+        }
+    }
+
     sourceSets {
         val tvSrcManifest = "src/tv/AndroidManifest.xml"
         val tvSrcJava = "src/tv/java"
@@ -142,7 +167,7 @@ android {
             matchingFallbacks += listOf("release")
             isDebuggable = false
             buildConfigField("boolean", "PRE_RELEASE", "true")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("prerelease")
         }
 
         create("tv") {
@@ -182,6 +207,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        freeCompilerArgs += listOf("-Xannotation-default-target=param-property")
     }
     buildFeatures {
         compose = true
