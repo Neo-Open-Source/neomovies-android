@@ -221,10 +221,14 @@ fun WatchSelectorScreen(
     var allohaParsingIframe by remember { mutableStateOf<String?>(null) }
     var allohaParsingStatus by remember { mutableStateOf<String?>(null) }
 
-    // Clean up Alloha session when leaving the screen
+    // Clean up Alloha session when leaving the screen, but only if the
+    // session was NOT handed off to the player (AllohaSessionHolder keeps
+    // it alive for PlayerActivity).
     DisposableEffect(allohaSession) {
         onDispose {
-            allohaSession?.release()
+            if (AllohaSessionHolder.session !== allohaSession) {
+                allohaSession?.release()
+            }
         }
     }
 

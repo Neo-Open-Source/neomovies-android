@@ -498,6 +498,9 @@ class PlayerViewModel(
         super.onCleared()
         player.removeListener(this)
         player.release()
+        // Release the Alloha session (proxy + parser) when the player is done
+        com.neo.neomovies.data.alloha.AllohaSessionHolder.session?.release()
+        com.neo.neomovies.data.alloha.AllohaSessionHolder.clear()
     }
 }
 
