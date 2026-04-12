@@ -65,12 +65,15 @@ fun TvVideoPlayerScreen(
         args.useExo || PlayerEngineManager.getMode(context) == PlayerEngineMode.EXO
     }
     val effectiveUseCollapsHeaders =
-        args.useCollapsHeaders || SourceManager.getMode(context) == SourceMode.COLLAPS
+        args.useCollapsHeaders || args.isAlloha || SourceManager.getMode(context) == SourceMode.COLLAPS || SourceManager.getMode(context) == SourceMode.ALLOHA
 
-    val defaultArgs = remember(effectiveUseExo, effectiveUseCollapsHeaders) {
+    val effectiveIsAlloha = args.isAlloha || SourceManager.getMode(context) == SourceMode.ALLOHA
+
+    val defaultArgs = remember(effectiveUseExo, effectiveUseCollapsHeaders, effectiveIsAlloha) {
         Bundle().apply {
             putBoolean(PlayerActivity.EXTRA_USE_EXO, effectiveUseExo)
             putBoolean(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS, effectiveUseCollapsHeaders)
+            putBoolean(PlayerActivity.EXTRA_IS_ALLOHA, effectiveIsAlloha)
         }
     }
 

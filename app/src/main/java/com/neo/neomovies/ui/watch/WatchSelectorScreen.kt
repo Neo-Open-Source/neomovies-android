@@ -72,6 +72,7 @@ import com.neo.neomovies.R
 import com.neo.neomovies.torrserver.TorServerService
 import com.neo.neomovies.torrserver.TorrServerManager
 import com.neo.neomovies.torrserver.api.model.TorrentFileStat
+import com.neo.neomovies.data.alloha.AllohaSessionHolder
 import com.neo.neomovies.data.alloha.AllohaSessionManager
 import com.neo.neomovies.ui.settings.SourceManager
 import com.neo.neomovies.ui.settings.SourceMode
@@ -220,10 +221,14 @@ fun WatchSelectorScreen(
     var allohaParsingIframe by remember { mutableStateOf<String?>(null) }
     var allohaParsingStatus by remember { mutableStateOf<String?>(null) }
 
-    // Clean up Alloha session when leaving the screen
+    // Clean up Alloha session when leaving the screen, but only if the
+    // session was NOT handed off to the player (AllohaSessionHolder keeps
+    // it alive for PlayerActivity).
     DisposableEffect(allohaSession) {
         onDispose {
-            allohaSession?.release()
+            if (AllohaSessionHolder.session !== allohaSession) {
+                allohaSession?.release()
+            }
         }
     }
 
@@ -242,15 +247,52 @@ fun WatchSelectorScreen(
                 allohaParsingStatus = context.getString(R.string.alloha_parsing_stream)
                 viewModel.clearSelectedPlaybackUrl()
 
+                // Build a descriptive episode name for the player title bar
+                val seasonNum = state.selectedSeasonNumber
+                val episodeNum = state.selectedEpisodeNumber
+                val translationName = state.allohaTranslationName ?: ""
+                val episodeName = if (seasonNum != null && episodeNum != null) {
+                    val se = "S%02dE%02d".format(seasonNum, episodeNum)
+                    if (translationName.isNotBlank()) "$se - $translationName" else se
+                } else {
+                    translationName.ifBlank { effectiveTitle ?: "" }
+                }
+
+                // Gather episode translations for in-player switching
+                val currentEpisodeVoiceovers: List<Voiceover> = run {
+                    val s = state.selectedSeasonNumber
+                    val e = state.selectedEpisodeNumber
+                    if (s != null && e != null) {
+                        state.tvSeasons?.firstOrNull { it.number == s }
+                            ?.episodes?.firstOrNull { it.number == e }
+                            ?.voiceovers.orEmpty()
+                    } else {
+                        state.movie?.voiceovers.orEmpty()
+                    }
+                }
+
                 allohaSession.ensureInitialized()
+                // Expose session so the player can trigger translation switches
+                AllohaSessionHolder.session = allohaSession
+
                 allohaSession.onStreamReady = { _, m3u8Url ->
                     allohaSession.hlsProxy?.updateMasterUrl(m3u8Url)
                     val proxyUrl = allohaSession.proxyMasterUrl
                     allohaParsingIframe = null
                     allohaParsingStatus = null
+
+                    // Populate holder so the player can switch translations and quality
+                    AllohaSessionHolder.setTranslations(
+                        names = currentEpisodeVoiceovers.map { it.title },
+                        urls = currentEpisodeVoiceovers.map { it.playbackUrl },
+                        current = translationName,
+                    )
+                    AllohaSessionHolder.qualityMap = allohaSession.lastQualityMap
+                    AllohaSessionHolder.currentQuality = allohaSession.lastSelectedQuality
+
                     onWatch(
                         arrayListOf(proxyUrl),
-                        arrayListOf(effectiveTitle ?: ""),
+                        arrayListOf(episodeName),
                         0,
                         effectiveTitle,
                         state.kinopoiskId,
@@ -1242,6 +1284,40 @@ fun WatchSelectorScreen(
         }
     }
 
+    // Alloha translation picker
+    if (state.showAllohaTranslationPicker && state.allohaEpisodeVoiceovers.isNotEmpty()) {
+        val allohaSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissAllohaTranslationPicker() },
+            sheetState = allohaSheetState,
+        ) {
+            Text(
+                text = stringResource(R.string.lumex_select_voiceover),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 32.dp),
+            ) {
+                items(state.allohaEpisodeVoiceovers) { voice ->
+                    val isSaved = voice.title == state.allohaTranslationName
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = voice.title,
+                                fontWeight = if (isSaved) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.selectAllohaVoiceover(voice) },
+                    )
+                }
+            }
+        }
+    }
+
     // Voice selection dialog from queue
     if (queueState.showVoiceDialog) {
         val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -1301,7 +1377,7 @@ private fun SeasonCard(
     title: String,
     posterUrl: String?,
     onClick: () -> Unit,
-    onDownload: () -> Unit,
+    onDownload: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -1324,17 +1400,19 @@ private fun SeasonCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-                IconButton(
-                    onClick = onDownload,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                        ),
-                ) {
-                    Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                if (onDownload != null) {
+                    IconButton(
+                        onClick = onDownload,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                            ),
+                    ) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                    }
                 }
             }
         }

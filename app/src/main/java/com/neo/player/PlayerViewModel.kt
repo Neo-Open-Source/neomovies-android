@@ -12,6 +12,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackGroup
@@ -64,8 +65,13 @@ class PlayerViewModel(
         savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_USE_COLLAPS_HEADERS)
             ?: (SourceManager.getMode(getApplication()) == SourceMode.COLLAPS)
     }
+
+    private val isAlloha: Boolean by lazy {
+        savedStateHandle.get<Boolean>(PlayerActivity.EXTRA_IS_ALLOHA)
+            ?: (SourceManager.getMode(getApplication()) == SourceMode.ALLOHA)
+    }
     
-    private val forceFirstAudioTrack: Boolean by lazy { useCollapsHeaders }
+    private val forceFirstAudioTrack: Boolean by lazy { useCollapsHeaders || isAlloha }
     private var appliedFirstAudioOverride: Boolean = false
 
     private val _uiState = MutableStateFlow(UiState(currentItemTitle = "", fileLoaded = false))
@@ -138,9 +144,17 @@ class PlayerViewModel(
             builder.build()
         } else {
             val trackSelector = DefaultTrackSelector(getApplication()).apply {
-                parameters = buildUponParameters()
+                val builder = buildUponParameters()
                     .setAllowInvalidateSelectionsOnRendererCapabilitiesChange(true)
-                    .build()
+                // Alloha HLS: prefer H264 codec and Russian audio.
+                // Quality is controlled via bnsi quality picker, not track constraints.
+                if (isAlloha) {
+                    builder
+                        .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
+                        .setPreferredAudioLanguage("ru")
+                        .setPreferredTextLanguage("ru")
+                }
+                parameters = builder.build()
             }
 
             val extractorsFactory = DefaultExtractorsFactory()
@@ -241,6 +255,30 @@ class PlayerViewModel(
         }
 
         val startPosition = if (startFromBeginning) 0L else prefs.getLong("pos_$currentUrl", 0L)
+
+        // Alloha: URLs go through a local HLS proxy -- use OkHttpDataSource + HlsMediaSource
+        // directly, bypassing the built-in MediaSourceFactory (which uses DefaultHttpDataSource
+        // + CacheDataSource that can't connect to localhost).
+        if (useExo && isAlloha) {
+            val activeHeaders = com.neo.neomovies.data.alloha.AllohaSessionHolder.session?.activeHeaders.orEmpty()
+            val okClient = okhttp3.OkHttpClient.Builder()
+                .followRedirects(true)
+                .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+            val okFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okClient)
+                .setUserAgent(activeHeaders["user-agent"] ?: "Mozilla/5.0")
+            val hlsFactory = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(okFactory)
+
+            val mediaSources = mediaItems.map { item ->
+                hlsFactory.createMediaSource(item)
+            }
+
+            (player as ExoPlayer).setMediaSources(mediaSources, startIndex, startPosition)
+            player.prepare()
+            player.playWhenReady = true
+            return
+        }
 
         player.setMediaItems(mediaItems, startIndex, startPosition)
         player.prepare()
@@ -450,6 +488,11 @@ class PlayerViewModel(
         player.trackSelectionParameters = builder.build()
     }
 
+    /** Reset audio track override so the next onTracksChanged selects first audio (Russian). */
+    fun resetAudioOverride() {
+        appliedFirstAudioOverride = false
+    }
+
     fun selectSpeed(speed: Float) {
         player.setPlaybackSpeed(speed)
         playbackSpeed = speed
@@ -460,6 +503,25 @@ class PlayerViewModel(
         if (state == Player.STATE_ENDED) eventsChannel.trySend(PlayerEvents.NavigateBack)
     }
 
+    override fun onPlayerError(error: PlaybackException) {
+        Log.e("PlayerVM", "Player error: ${error.errorCodeName}", error)
+        // For Alloha streams, try restarting the session on CDN errors (403/503)
+        if (isAlloha) {
+            val session = com.neo.neomovies.data.alloha.AllohaSessionHolder.session
+            val iframeUrl = session?.parser?.lastIframeUrl
+            if (!iframeUrl.isNullOrBlank()) {
+                Log.d("PlayerVM", "Alloha CDN error, restarting session from ${player.currentPosition}ms")
+                session.onM3u8Updated = { _ ->
+                    appliedFirstAudioOverride = false
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+                session.startSession(iframeUrl, isRestart = true)
+                return
+            }
+        }
+    }
+
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         eventsChannel.trySend(PlayerEvents.IsPlayingChanged(isPlaying))
     }
@@ -468,6 +530,9 @@ class PlayerViewModel(
         super.onCleared()
         player.removeListener(this)
         player.release()
+        // Release the Alloha session (proxy + parser) when the player is done
+        com.neo.neomovies.data.alloha.AllohaSessionHolder.session?.release()
+        com.neo.neomovies.data.alloha.AllohaSessionHolder.clear()
     }
 }
 

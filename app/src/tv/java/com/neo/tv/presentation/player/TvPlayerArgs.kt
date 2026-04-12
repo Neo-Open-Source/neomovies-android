@@ -7,6 +7,7 @@ object TvPlayerArgs {
     var title: String? = null
     var useExo: Boolean = false
     var useCollapsHeaders: Boolean = false
+    var isAlloha: Boolean = false
     var sourceId: String? = null
     var kinopoiskId: Int? = null
     var episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null
@@ -18,6 +19,7 @@ object TvPlayerArgs {
         title: String?,
         useExo: Boolean,
         useCollapsHeaders: Boolean,
+        isAlloha: Boolean = false,
         sourceId: String?,
         kinopoiskId: Int?,
         episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)?,
@@ -28,6 +30,7 @@ object TvPlayerArgs {
         this.title = title
         this.useExo = useExo
         this.useCollapsHeaders = useCollapsHeaders
+        this.isAlloha = isAlloha
         this.sourceId = sourceId
         this.kinopoiskId = kinopoiskId
         this.episodeProgressCallback = episodeProgressCallback
@@ -40,6 +43,7 @@ object TvPlayerArgs {
         title = null
         useExo = false
         useCollapsHeaders = false
+        isAlloha = false
         sourceId = null
         kinopoiskId = null
         episodeProgressCallback = null

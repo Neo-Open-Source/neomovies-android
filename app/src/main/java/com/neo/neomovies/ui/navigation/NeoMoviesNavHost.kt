@@ -77,6 +77,7 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                     val mode = com.neo.neomovies.ui.settings.PlayerEngineManager.getMode(context)
                     val sourceMode = com.neo.neomovies.ui.settings.SourceManager.getMode(context)
                     val useCollapsHeaders = sourceMode == com.neo.neomovies.ui.settings.SourceMode.COLLAPS
+                    val isAlloha = sourceMode == com.neo.neomovies.ui.settings.SourceMode.ALLOHA
                     val intent =
                         when (mode) {
                             com.neo.neomovies.ui.settings.PlayerEngineMode.EXO ->
@@ -87,6 +88,7 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                                     startIndex = startIndex,
                                     title = title,
                                     useCollapsHeaders = useCollapsHeaders,
+                                    isAlloha = isAlloha,
                                     kinopoiskId = kinopoiskId,
                                     episodeProgressCallback = episodeProgressCallback,
                                 )
@@ -98,12 +100,17 @@ fun NeoMoviesNavHost(modifier: Modifier = Modifier) {
                                     startIndex = startIndex,
                                     title = title,
                                     useCollapsHeaders = useCollapsHeaders,
+                                    isAlloha = isAlloha,
                                     kinopoiskId = kinopoiskId,
                                     episodeProgressCallback = episodeProgressCallback,
                                 )
                         }
                     context.startActivity(intent)
-                    navController.popBackStack()
+                    // For Alloha, keep the selector on the back stack so the user
+                    // can return and pick the next episode after the player finishes.
+                    if (sourceMode != com.neo.neomovies.ui.settings.SourceMode.ALLOHA) {
+                        navController.popBackStack()
+                    }
                 },
             )
         }

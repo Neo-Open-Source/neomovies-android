@@ -172,7 +172,9 @@ class PlayerActivity : BasePlayerActivity() {
         val aspectRatioButton = binding.playerView.findViewById<ImageButton>(R.id.btn_aspect_ratio)
 
         val useCollapsHeaders = intent.getBooleanExtra(EXTRA_USE_COLLAPS_HEADERS, false)
-        qualityButton.isVisible = useCollapsHeaders
+        val isAllohaSource = intent.getBooleanExtra(EXTRA_IS_ALLOHA, false)
+        // Quality selection: available for both Collaps (DASH/HLS) and Alloha (HLS proxy)
+        qualityButton.isVisible = useCollapsHeaders || isAllohaSource
 
         audioButton.isEnabled = false
         audioButton.imageAlpha = 75
@@ -185,7 +187,20 @@ class PlayerActivity : BasePlayerActivity() {
         qualityButton.isEnabled = false
         qualityButton.imageAlpha = 75
 
+        // For Alloha: enable audio button immediately for translation switching
+        if (isAllohaSource) {
+            val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+            if (holder.translationNames.size > 1) {
+                audioButton.isEnabled = true
+                audioButton.imageAlpha = 255
+            }
+        }
+
         audioButton.setOnClickListener {
+            if (isAllohaSource) {
+                showAllohaTranslationPicker()
+                return@setOnClickListener
+            }
             TrackSelectionDialogFragment
                 .newInstance(C.TRACK_TYPE_AUDIO)
                 .show(supportFragmentManager, "trackselectiondialog")
@@ -198,6 +213,10 @@ class PlayerActivity : BasePlayerActivity() {
         }
 
         qualityButton.setOnClickListener {
+            if (isAllohaSource) {
+                showAllohaQualityPicker()
+                return@setOnClickListener
+            }
             TrackSelectionDialogFragment
                 .newInstance(C.TRACK_TYPE_VIDEO)
                 .show(supportFragmentManager, "trackselectiondialog")
@@ -250,7 +269,7 @@ class PlayerActivity : BasePlayerActivity() {
                             subtitleButton.imageAlpha = 255
                             speedButton.isEnabled = true
                             speedButton.imageAlpha = 255
-                            if (useCollapsHeaders) {
+                            if (useCollapsHeaders || isAllohaSource) {
                                 qualityButton.isEnabled = true
                                 qualityButton.imageAlpha = 255
                             }
@@ -502,6 +521,115 @@ class PlayerActivity : BasePlayerActivity() {
         }
     }
 
+    private fun showAllohaQualityPicker() {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val session = holder.session ?: return
+        val qualityMap = session.lastQualityMap
+        if (qualityMap.isEmpty()) return
+
+        // Order: highest to lowest
+        val orderedKeys = listOf("2160", "1440", "1080", "720", "480", "360")
+            .filter { qualityMap.containsKey(it) }
+        if (orderedKeys.isEmpty()) return
+
+        val labels = orderedKeys.map { "${it}p" }.toTypedArray()
+        val currentIdx = orderedKeys.indexOf(holder.currentQuality).coerceAtLeast(0)
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(com.neo.neomovies.R.string.lumex_select_quality))
+            .setSingleChoiceItems(labels, currentIdx) { dialog, which ->
+                dialog.dismiss()
+                val newKey = orderedKeys[which]
+                if (newKey == holder.currentQuality) return@setSingleChoiceItems
+
+                holder.currentQuality = newKey
+                session.switchQuality(newKey)
+
+                // Force ExoPlayer to reload from proxy with the new quality URL.
+                // stop() invalidates the cached HLS manifest; prepare() re-fetches.
+                viewModel.resetAudioOverride()
+                viewModel.player.stop()
+                viewModel.player.prepare()
+                viewModel.player.playWhenReady = true
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showAllohaTranslationPicker() {
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+        val names = holder.translationNames
+        val urls = holder.translationUrls
+        if (names.isEmpty()) return
+
+        val currentIdx = names.indexOf(holder.currentTranslation).coerceAtLeast(0)
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(com.neo.neomovies.R.string.lumex_select_voiceover))
+            .setSingleChoiceItems(names.toTypedArray(), currentIdx) { dialog, which ->
+                dialog.dismiss()
+                val newName = names[which]
+                val newIframeUrl = urls.getOrNull(which) ?: return@setSingleChoiceItems
+                if (newName == holder.currentTranslation) return@setSingleChoiceItems
+
+                switchAllohaTranslation(newName, newIframeUrl)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun switchAllohaTranslation(translationName: String, iframeUrl: String) {
+        val session = com.neo.neomovies.data.alloha.AllohaSessionHolder.session ?: return
+        val holder = com.neo.neomovies.data.alloha.AllohaSessionHolder
+
+        // Save current position so we know the user was at this point
+        viewModel.updatePlaybackProgress()
+
+        // Show a brief loading indicator
+        val videoNameTextView = binding.playerView.findViewById<android.widget.TextView>(R.id.video_name)
+        val originalTitle = videoNameTextView.text
+        videoNameTextView.text = getString(com.neo.neomovies.R.string.alloha_parsing_stream)
+
+        session.onStreamReady = { _, _ ->
+            // Don't re-prepare yet: CDN auth (config_update) hasn't arrived.
+            // Wait for onM3u8Updated which fires after config_update + proxy URL refresh.
+            holder.currentTranslation = translationName
+
+            // Save the translation preference
+            getSharedPreferences("alloha_translation", MODE_PRIVATE)
+                .edit()
+                .putString("last_translation_name", translationName)
+                .apply()
+        }
+
+        session.onM3u8Updated = { _ ->
+            val currentTitle = originalTitle?.toString() ?: ""
+            val newTitle = if (currentTitle.contains(" - ")) {
+                currentTitle.substringBefore(" - ") + " - $translationName"
+            } else {
+                "$currentTitle - $translationName"
+            }
+            runOnUiThread {
+                videoNameTextView.text = newTitle
+                // Reset audio override so Russian track is selected on new translation
+                viewModel.resetAudioOverride()
+                // Force reload: stop() invalidates cached manifest, prepare() re-fetches
+                viewModel.player.stop()
+                viewModel.player.prepare()
+                viewModel.player.playWhenReady = true
+            }
+        }
+
+        session.onError = { error ->
+            runOnUiThread {
+                videoNameTextView.text = originalTitle
+                android.widget.Toast.makeText(this, "Error: $error", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        session.startSession(iframeUrl)
+    }
+
     companion object {
         const val EXTRA_URL = "url"
         const val EXTRA_URLS = "urls"
@@ -512,6 +640,7 @@ class PlayerActivity : BasePlayerActivity() {
         const val EXTRA_USE_COLLAPS_HEADERS = "use_collaps_headers"
         const val EXTRA_START_FROM_BEGINNING = "start_from_beginning"
         const val EXTRA_KINOPOISK_ID = "kinopoisk_id"
+        const val EXTRA_IS_ALLOHA = "is_alloha"
 
         fun intent(context: android.content.Context, url: String, title: String? = null, startFromBeginning: Boolean = false): Intent {
             return Intent(context, PlayerActivity::class.java).apply {
@@ -540,6 +669,7 @@ class PlayerActivity : BasePlayerActivity() {
             startFromBeginning: Boolean = false,
             useExo: Boolean = false,
             useCollapsHeaders: Boolean = false,
+            isAlloha: Boolean = false,
             kinopoiskId: Int? = null,
             episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
         ): Intent {
@@ -552,6 +682,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, useExo)
                 putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
+                putExtra(EXTRA_IS_ALLOHA, isAlloha)
                 putExtra(EXTRA_KINOPOISK_ID, kinopoiskId)
             }
         }
@@ -564,6 +695,7 @@ class PlayerActivity : BasePlayerActivity() {
             title: String? = null,
             startFromBeginning: Boolean = false,
             useCollapsHeaders: Boolean = false,
+            isAlloha: Boolean = false,
             kinopoiskId: Int? = null,
             episodeProgressCallback: ((Int, Int, Int, Long, Long) -> Unit)? = null,
         ): Intent {
@@ -576,6 +708,7 @@ class PlayerActivity : BasePlayerActivity() {
                 putExtra(EXTRA_START_FROM_BEGINNING, startFromBeginning)
                 putExtra(EXTRA_USE_EXO, true)
                 putExtra(EXTRA_USE_COLLAPS_HEADERS, useCollapsHeaders)
+                putExtra(EXTRA_IS_ALLOHA, isAlloha)
                 putExtra(EXTRA_KINOPOISK_ID, kinopoiskId)
             }
         }
