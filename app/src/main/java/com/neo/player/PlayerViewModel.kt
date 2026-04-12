@@ -488,6 +488,11 @@ class PlayerViewModel(
         player.trackSelectionParameters = builder.build()
     }
 
+    /** Reset audio track override so the next onTracksChanged selects first audio (Russian). */
+    fun resetAudioOverride() {
+        appliedFirstAudioOverride = false
+    }
+
     fun selectSpeed(speed: Float) {
         player.setPlaybackSpeed(speed)
         playbackSpeed = speed
@@ -496,6 +501,25 @@ class PlayerViewModel(
     override fun onPlaybackStateChanged(state: Int) {
         if (state == Player.STATE_READY) _uiState.update { it.copy(fileLoaded = true) }
         if (state == Player.STATE_ENDED) eventsChannel.trySend(PlayerEvents.NavigateBack)
+    }
+
+    override fun onPlayerError(error: PlaybackException) {
+        Log.e("PlayerVM", "Player error: ${error.errorCodeName}", error)
+        // For Alloha streams, try restarting the session on CDN errors (403/503)
+        if (isAlloha) {
+            val session = com.neo.neomovies.data.alloha.AllohaSessionHolder.session
+            val iframeUrl = session?.parser?.lastIframeUrl
+            if (!iframeUrl.isNullOrBlank()) {
+                Log.d("PlayerVM", "Alloha CDN error, restarting session from ${player.currentPosition}ms")
+                session.onM3u8Updated = { _ ->
+                    appliedFirstAudioOverride = false
+                    player.prepare()
+                    player.playWhenReady = true
+                }
+                session.startSession(iframeUrl, isRestart = true)
+                return
+            }
+        }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {

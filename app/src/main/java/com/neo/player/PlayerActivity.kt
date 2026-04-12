@@ -551,8 +551,9 @@ class PlayerActivity : BasePlayerActivity() {
         val originalTitle = videoNameTextView.text
         videoNameTextView.text = getString(com.neo.neomovies.R.string.alloha_parsing_stream)
 
-        session.onStreamReady = { _, m3u8Url ->
-            session.hlsProxy?.updateMasterUrl(m3u8Url)
+        session.onStreamReady = { _, _ ->
+            // Don't re-prepare yet: CDN auth (config_update) hasn't arrived.
+            // Wait for onM3u8Updated which fires after config_update + proxy URL refresh.
             holder.currentTranslation = translationName
 
             // Save the translation preference
@@ -560,8 +561,9 @@ class PlayerActivity : BasePlayerActivity() {
                 .edit()
                 .putString("last_translation_name", translationName)
                 .apply()
+        }
 
-            // Update title bar with new translation name
+        session.onM3u8Updated = { _ ->
             val currentTitle = originalTitle?.toString() ?: ""
             val newTitle = if (currentTitle.contains(" - ")) {
                 currentTitle.substringBefore(" - ") + " - $translationName"
@@ -570,7 +572,9 @@ class PlayerActivity : BasePlayerActivity() {
             }
             runOnUiThread {
                 videoNameTextView.text = newTitle
-                // Re-prepare ExoPlayer -- proxy URL stays the same, upstream changed
+                // Reset audio override so Russian track is selected on new translation
+                viewModel.resetAudioOverride()
+                // Re-prepare ExoPlayer -- proxy URL stays the same, upstream CDN changed
                 viewModel.player.prepare()
                 viewModel.player.playWhenReady = true
             }
