@@ -266,7 +266,7 @@ class PlayerViewModel(
                 hlsFactory.createMediaSource(item)
             }
 
-            player.setMediaSources(mediaSources, startIndex, startPosition)
+            (player as ExoPlayer).setMediaSources(mediaSources, startIndex, startPosition)
             player.prepare()
             player.playWhenReady = true
             return
