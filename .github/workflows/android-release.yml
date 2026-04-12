@@ -102,6 +102,19 @@ jobs:
             exit 0
           fi
           echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > "$RUNNER_TEMP/release.keystore"
+          
+          # Temporary diagnostic: verify keystore and passwords work
+          echo "=== Keystore diagnostic ==="
+          wc -c < "$RUNNER_TEMP/release.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" -noprompt || echo "STOREPASS FAILED"
+          
+          # Test if keypass works by attempting to export the key
+          keytool -exportcert -keystore "$RUNNER_TEMP/release.keystore" \
+            -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.RELEASE_KEY_PASSWORD }}" \
+            -alias "${{ secrets.RELEASE_KEY_ALIAS }}" \
+            -file /tmp/test.crt || echo "KEYPASS FAILED - this is the problem!"
+          
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> $GITHUB_ENV
           echo "RELEASE_KEYSTORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
@@ -196,3 +209,66 @@ jobs:
           files: |
             ${{ steps.renamed.outputs.dir }}/*.apk
             ${{ steps.renamed.outputs.tv_dir }}/*.apk
+
+      - name: Create release post
+        if: ${{ steps.meta.outputs.upload_to_release == 'true' && steps.meta.outputs.is_prerelease == 'true' }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          TAG="${{ steps.meta.outputs.tag_name }}"
+          SLUG="release-${VERSION}"
+          DATE=$(date -u +"%Y-%m-%d")
+          
+          # Create EN post
+          mkdir -p site/src/content/posts/en
+          cat > "site/src/content/posts/en/${SLUG}.mdx" << 'EOF'
+          export const metadata = {
+            title: "NeoMovies ${VERSION} Released",
+            description: "Download the latest prerelease version of NeoMovies for Android",
+            date: "${DATE}",
+            lang: "en",
+            slug: "${SLUG}"
+          }
+          
+          # NeoMovies ${VERSION}
+          
+          New prerelease version is now available for download.
+          
+          ## Download
+          
+          - [Mobile APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-prerelease-${VERSION}-universal.apk)
+          - [TV APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-tv-prerelease-${VERSION}-universal.apk)
+          
+          [View all downloads on GitHub](https://github.com/neomovies/neomovies-android/releases/tag/${TAG})
+          EOF
+          
+          # Create RU post
+          mkdir -p site/src/content/posts/ru
+          cat > "site/src/content/posts/ru/${SLUG}.mdx" << 'EOF'
+          export const metadata = {
+            title: "Вышел NeoMovies ${VERSION}",
+            description: "Скачайте последнюю предварительную версию NeoMovies для Android",
+            date: "${DATE}",
+            lang: "ru",
+            slug: "${SLUG}"
+          }
+          
+          # NeoMovies ${VERSION}
+          
+          Доступна новая предварительная версия для скачивания.
+          
+          ## Скачать
+          
+          - [Мобильный APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-prerelease-${VERSION}-universal.apk)
+          - [TV APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-tv-prerelease-${VERSION}-universal.apk)
+          
+          [Все файлы на GitHub](https://github.com/neomovies/neomovies-android/releases/tag/${TAG})
+          EOF
+
+      - name: Commit and push release post
+        if: ${{ steps.meta.outputs.upload_to_release == 'true' && steps.meta.outputs.is_prerelease == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add site/src/content/posts/
+          git commit -m "Add release post for ${{ steps.meta.outputs.tag_name }}" || echo "No changes to commit"
+          git push origin main || echo "Push failed, may need manual intervention"
