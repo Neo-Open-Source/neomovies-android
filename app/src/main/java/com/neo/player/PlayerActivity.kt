@@ -545,8 +545,10 @@ class PlayerActivity : BasePlayerActivity() {
                 holder.currentQuality = newKey
                 session.switchQuality(newKey)
 
-                // Re-prepare ExoPlayer with new quality URL via proxy
+                // Force ExoPlayer to reload from proxy with the new quality URL.
+                // stop() invalidates the cached HLS manifest; prepare() re-fetches.
                 viewModel.resetAudioOverride()
+                viewModel.player.stop()
                 viewModel.player.prepare()
                 viewModel.player.playWhenReady = true
             }
@@ -611,7 +613,8 @@ class PlayerActivity : BasePlayerActivity() {
                 videoNameTextView.text = newTitle
                 // Reset audio override so Russian track is selected on new translation
                 viewModel.resetAudioOverride()
-                // Re-prepare ExoPlayer -- proxy URL stays the same, upstream CDN changed
+                // Force reload: stop() invalidates cached manifest, prepare() re-fetches
+                viewModel.player.stop()
                 viewModel.player.prepare()
                 viewModel.player.playWhenReady = true
             }
