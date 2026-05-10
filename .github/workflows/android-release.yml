@@ -17,7 +17,7 @@ on:
         default: true
         type: boolean
       upload_to_release:
-        description: 'Upload APK to the GitHub Release with this tag'
+        description: 'Upload APK to releases'
         required: true
         default: true
         type: boolean
@@ -28,6 +28,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      FORGEJO_API_URL: https://git.disroot.org/api/v1
+      FORGEJO_OWNER: Neo
+      FORGEJO_REPO: neomovies-android
 
     steps:
       - name: Checkout
@@ -102,20 +107,9 @@ jobs:
             echo "RELEASE_KEYSTORE_BASE64 secret not set, skipping keystore setup"
             exit 0
           fi
+
           echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > "$RUNNER_TEMP/release.keystore"
-          
-          # Temporary diagnostic: verify keystore and passwords work
-          echo "=== Keystore diagnostic ==="
-          wc -c < "$RUNNER_TEMP/release.keystore"
-          keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" -noprompt || echo "STOREPASS FAILED"
-          
-          # Test if keypass works by attempting to export the key
-          keytool -exportcert -keystore "$RUNNER_TEMP/release.keystore" \
-            -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
-            -keypass "${{ secrets.RELEASE_KEY_PASSWORD }}" \
-            -alias "${{ secrets.RELEASE_KEY_ALIAS }}" \
-            -file /tmp/test.crt || echo "KEYPASS FAILED - this is the problem!"
-          
+
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> $GITHUB_ENV
           echo "RELEASE_KEYSTORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
@@ -136,10 +130,11 @@ jobs:
           set -e
           APK_DIR="app/build/outputs/apk/${{ steps.meta.outputs.variant }}"
           TV_APK_DIR="app/build/outputs/apk/${{ steps.meta.outputs.tv_variant }}"
+
           echo "dir=$APK_DIR" >> $GITHUB_OUTPUT
           echo "tv_dir=$TV_APK_DIR" >> $GITHUB_OUTPUT
-          echo "count=$(ls -1 $APK_DIR/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
-          echo "tv_count=$(ls -1 $TV_APK_DIR/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
+          echo "count=$(ls -1 "$APK_DIR"/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
+          echo "tv_count=$(ls -1 "$TV_APK_DIR"/*.apk | wc -l | xargs)" >> $GITHUB_OUTPUT
 
       - name: Rename APKs
         id: renamed
@@ -150,8 +145,8 @@ jobs:
           TV_IN_DIR="${{ steps.apk.outputs.tv_dir }}"
           OUT_DIR="$IN_DIR/renamed"
           TV_OUT_DIR="$TV_IN_DIR/renamed"
-          mkdir -p "$OUT_DIR"
-          mkdir -p "$TV_OUT_DIR"
+
+          mkdir -p "$OUT_DIR" "$TV_OUT_DIR"
 
           VARIANT="${{ steps.meta.outputs.variant }}"
           TV_VARIANT="${{ steps.meta.outputs.tv_variant }}"
@@ -160,6 +155,7 @@ jobs:
           for f in "$IN_DIR"/*.apk; do
             b="$(basename "$f")"
             abi="universal"
+
             if [[ "$b" == *"arm64-v8a"* ]]; then
               abi="arm64-v8a"
             elif [[ "$b" == *"armeabi-v7a"* ]]; then
@@ -174,6 +170,7 @@ jobs:
           for f in "$TV_IN_DIR"/*.apk; do
             b="$(basename "$f")"
             abi="universal"
+
             if [[ "$b" == *"arm64-v8a"* ]]; then
               abi="arm64-v8a"
             elif [[ "$b" == *"armeabi-v7a"* ]]; then
@@ -211,17 +208,107 @@ jobs:
             ${{ steps.renamed.outputs.dir }}/*.apk
             ${{ steps.renamed.outputs.tv_dir }}/*.apk
 
+      - name: Create or find Forgejo Release
+        id: forgejo_release
+        if: ${{ steps.meta.outputs.upload_to_release == 'true' }}
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          TAG_NAME: ${{ steps.meta.outputs.tag_name }}
+          IS_PRERELEASE: ${{ steps.meta.outputs.is_prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${FORGEJO_TOKEN:-}" ]; then
+            echo "FORGEJO_TOKEN secret is not set"
+            exit 1
+          fi
+
+          RELEASE_URL="$FORGEJO_API_URL/repos/$FORGEJO_OWNER/$FORGEJO_REPO/releases/tags/$TAG_NAME"
+
+          HTTP_CODE=$(curl -sS -o /tmp/forgejo-release.json -w "%{http_code}" \
+            -H "Authorization: token $FORGEJO_TOKEN" \
+            "$RELEASE_URL")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Forgejo release already exists"
+          else
+            echo "Creating Forgejo release"
+
+            jq -n \
+              --arg tag "$TAG_NAME" \
+              --arg name "$TAG_NAME" \
+              --argjson prerelease "$IS_PRERELEASE" \
+              '{
+                tag_name: $tag,
+                name: $name,
+                body: "",
+                draft: false,
+                prerelease: $prerelease
+              }' > /tmp/forgejo-create-release.json
+
+            curl -sS -f \
+              -X POST \
+              -H "Authorization: token $FORGEJO_TOKEN" \
+              -H "Content-Type: application/json" \
+              "$FORGEJO_API_URL/repos/$FORGEJO_OWNER/$FORGEJO_REPO/releases" \
+              --data @/tmp/forgejo-create-release.json \
+              > /tmp/forgejo-release.json
+          fi
+
+          RELEASE_ID=$(jq -r '.id' /tmp/forgejo-release.json)
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "Failed to get Forgejo release id"
+            cat /tmp/forgejo-release.json
+            exit 1
+          fi
+
+          echo "id=$RELEASE_ID" >> $GITHUB_OUTPUT
+
+      - name: Upload APKs to Forgejo Release
+        if: ${{ steps.meta.outputs.upload_to_release == 'true' }}
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          RELEASE_ID: ${{ steps.forgejo_release.outputs.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          upload_asset() {
+            local file="$1"
+            local name
+            name="$(basename "$file")"
+
+            echo "Uploading $name to Forgejo release..."
+
+            curl -sS -f \
+              -X POST \
+              -H "Authorization: token $FORGEJO_TOKEN" \
+              -F "attachment=@$file" \
+              "$FORGEJO_API_URL/repos/$FORGEJO_OWNER/$FORGEJO_REPO/releases/$RELEASE_ID/assets?name=$name" \
+              > /dev/null
+          }
+
+          for f in ${{ steps.renamed.outputs.dir }}/*.apk; do
+            upload_asset "$f"
+          done
+
+          for f in ${{ steps.renamed.outputs.tv_dir }}/*.apk; do
+            upload_asset "$f"
+          done
+
       - name: Create release post
         if: ${{ steps.meta.outputs.upload_to_release == 'true' && steps.meta.outputs.is_prerelease == 'true' }}
+        shell: bash
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           TAG="${{ steps.meta.outputs.tag_name }}"
           SLUG="release-${VERSION}"
           DATE=$(date -u +"%Y-%m-%d")
-          
-          # Create EN post
+
           mkdir -p site/src/content/posts/en
-          cat > "site/src/content/posts/en/${SLUG}.mdx" << 'EOF'
+          cat > "site/src/content/posts/en/${SLUG}.mdx" << EOF
           export const metadata = {
             title: "NeoMovies ${VERSION} Released",
             description: "Download the latest prerelease version of NeoMovies for Android",
@@ -229,22 +316,21 @@ jobs:
             lang: "en",
             slug: "${SLUG}"
           }
-          
+
           # NeoMovies ${VERSION}
-          
+
           New prerelease version is now available for download.
-          
+
           ## Download
-          
+
           - [Mobile APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-prerelease-${VERSION}-universal.apk)
           - [TV APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-tv-prerelease-${VERSION}-universal.apk)
-          
+
           [View all downloads on GitHub](https://github.com/neomovies/neomovies-android/releases/tag/${TAG})
           EOF
-          
-          # Create RU post
+
           mkdir -p site/src/content/posts/ru
-          cat > "site/src/content/posts/ru/${SLUG}.mdx" << 'EOF'
+          cat > "site/src/content/posts/ru/${SLUG}.mdx" << EOF
           export const metadata = {
             title: "Вышел NeoMovies ${VERSION}",
             description: "Скачайте последнюю предварительную версию NeoMovies для Android",
@@ -252,26 +338,28 @@ jobs:
             lang: "ru",
             slug: "${SLUG}"
           }
-          
+
           # NeoMovies ${VERSION}
-          
+
           Доступна новая предварительная версия для скачивания.
-          
+
           ## Скачать
-          
+
           - [Мобильный APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-prerelease-${VERSION}-universal.apk)
           - [TV APK (universal)](https://github.com/neomovies/neomovies-android/releases/download/${TAG}/neomovies-tv-prerelease-${VERSION}-universal.apk)
-          
+
           [Все файлы на GitHub](https://github.com/neomovies/neomovies-android/releases/tag/${TAG})
           EOF
 
       - name: Commit and push release post
         if: ${{ steps.meta.outputs.upload_to_release == 'true' && steps.meta.outputs.is_prerelease == 'true' }}
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           git add site/src/content/posts/
+
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
