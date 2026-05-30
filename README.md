@@ -15,6 +15,9 @@
 
 </div>
 
+## Information
+NEW REPO: https://git.disroot.org/Neo/neomovies-mobile/ GH mirror https://github.com/Neo-Open-Source/neomovies-mobile GL mirror https://gitlab.com/foxixus/neomovies-mobile
+
 ## Screenshots
 
 <div align="center">
